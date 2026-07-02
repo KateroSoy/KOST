@@ -30,13 +30,13 @@ export function LandingPage({ onStartDemo, onGoToLogin, onGoToRegister }: Landin
           </nav>
 
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={onGoToLogin}
               className="text-sm font-semibold text-slate-600 hover:text-teal-600 px-3 py-1.5 transition-colors"
             >
               Masuk
             </button>
-            <button 
+            <button
               onClick={onGoToRegister}
               className="text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-xl transition-all shadow-sm shadow-teal-500/10 cursor-pointer"
             >
@@ -60,13 +60,13 @@ export function LandingPage({ onStartDemo, onGoToLogin, onGoToRegister }: Landin
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4">
-            <button 
+            <button
               onClick={onStartDemo}
               className="w-full sm:w-auto px-6 py-3.5 text-base font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-2xl shadow-lg shadow-teal-600/15 flex items-center justify-center gap-2 transition-all hover:translate-y-[-1px] active:translate-y-0 cursor-pointer"
             >
               Coba Demo Instan <ArrowRight className="h-5 w-5" />
             </button>
-            <button 
+            <button
               onClick={onGoToRegister}
               className="w-full sm:w-auto px-6 py-3.5 text-base font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
@@ -305,7 +305,7 @@ export function LandingPage({ onStartDemo, onGoToLogin, onGoToRegister }: Landin
                 <h3 className="text-lg font-bold">Kostos Pro (MVP)</h3>
                 <p className="text-xs text-teal-300">Untuk pengelolaan full-control rapi</p>
                 <div className="my-4">
-                  <span className="text-3xl font-black">Rp 29.000</span>
+                  <span className="text-3xl font-black">Rp 99.000</span>
                   <span className="text-teal-300 text-xs font-medium"> / bulan</span>
                 </div>
                 <ul className="space-y-2 text-xs text-teal-100">
