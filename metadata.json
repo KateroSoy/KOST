@@ -1,0 +1,6 @@
+{
+  "name": "Kostos",
+  "description": "Aplikasi manajemen kost praktis untuk mengelola kamar, penghuni, tagihan, pengeluaran, dan komplain.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
