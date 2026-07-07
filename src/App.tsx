@@ -328,6 +328,14 @@ export default function App() {
     localStorage.setItem('kostos_expenses', JSON.stringify([]));
     localStorage.setItem('kostos_complaints', JSON.stringify([]));
     localStorage.setItem('kostos_logged_in', 'true');
+    syncToBackend('restore', 'POST', {
+      kostSettings: freshSettings,
+      rooms: freshRooms,
+      tenants: [],
+      bills: [],
+      expenses: [],
+      complaints: []
+    });
     setAuthMode('dashboard');
   };
 
@@ -394,6 +402,14 @@ export default function App() {
           if (backupData.expenses) { setExpenses(backupData.expenses); localStorage.setItem('kostos_expenses', JSON.stringify(backupData.expenses)); }
           if (backupData.complaints) { setComplaints(backupData.complaints); localStorage.setItem('kostos_complaints', JSON.stringify(backupData.complaints)); }
           localStorage.setItem('kostos_settings', JSON.stringify(backupData.kostSettings));
+          syncToBackend('restore', 'POST', {
+            kostSettings: backupData.kostSettings,
+            rooms: backupData.rooms || [],
+            tenants: backupData.tenants || [],
+            bills: backupData.bills || [],
+            expenses: backupData.expenses || [],
+            complaints: backupData.complaints || []
+          });
           setBackupMsg({ type: 'success', text: '✓ Database KOSTOS sukses dipulihkan dari file backup!' });
           setTimeout(() => setBackupMsg(null), 4000);
         } else {
