@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from './helpers.js';
+import { T } from '../db.js';
 import {
   listTenants, getTenant, upsertTenant, deleteTenant,
   listRooms, upsertRoom, upsertBill, getSettings,
@@ -58,9 +59,9 @@ router.post('/:id/move-out', asyncHandler(async (req, res, db) => {
   const tenant = await getTenant(db, req.params.id);
   if (!tenant) return res.status(404).json({ error: 'Penghuni tidak ditemukan' });
 
-  await db.query("DELETE FROM bills WHERE tenantId = ? AND status != 'Lunas'", [tenant.id]);
+  await db.query(`DELETE FROM ${T.bills} WHERE tenantId = ? AND status != 'Lunas'`, [tenant.id]);
   await db.query(
-    'UPDATE rooms SET status = ?, tenantId = NULL WHERE tenantId = ? OR number = ? OR id = ?',
+    `UPDATE ${T.rooms} SET status = ?, tenantId = NULL WHERE tenantId = ? OR number = ? OR id = ?`,
     ['Kosong', tenant.id, tenant.roomAssigned, tenant.roomAssigned]
   );
   await deleteTenant(db, tenant.id);

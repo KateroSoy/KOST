@@ -70,7 +70,7 @@ Karena ini adalah aplikasi React (SPA), jika user me-refresh halaman selain hala
    DB_NAME=u123456_namadb
    ```
 
-6. Tabel dibuat otomatis saat server pertama kali jalan — tidak perlu import SQL manual. Saat database masih kosong, server otomatis mengisinya dengan data contoh.
+6. Tabel dibuat otomatis saat server pertama kali jalan — tidak perlu import SQL manual. Saat database masih kosong, server otomatis mengisinya dengan data contoh. Semua tabel aplikasi ini berawalan **`kostos_`** (misal `kostos_rooms`, `kostos_bills`), jadi aman meskipun database yang sama juga dipakai aplikasi lain (WordPress, dll).
 
 > **Catatan untuk pemakaian lokal (Windows):** setelah `.env` terisi, aplikasi bisa langsung dipakai di komputer sendiri tanpa deploy — `npm run dev` untuk development, atau `npm run build` lalu `npm run start` (START.bat) untuk pemakaian sehari-hari. Semua data tersimpan di MySQL remote hPanel.
 

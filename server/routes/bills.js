@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from './helpers.js';
+import { T } from '../db.js';
 import { listBills, getBill, upsertBill, deleteBill } from '../repo.js';
 
 const router = Router();
@@ -13,8 +14,8 @@ router.get('/', asyncHandler(async (req, res, db) => {
 router.post('/', asyncHandler(async (req, res, db) => {
   const bill = req.body;
   await upsertBill(db, bill);
-  await db.query('UPDATE tenants SET status = ? WHERE id = ?', ['Belum Bayar', bill.tenantId]);
-  await db.query('UPDATE rooms SET status = ? WHERE number = ?', ['Terisi', bill.roomNumber]);
+  await db.query(`UPDATE ${T.tenants} SET status = ? WHERE id = ?`, ['Belum Bayar', bill.tenantId]);
+  await db.query(`UPDATE ${T.rooms} SET status = ? WHERE number = ?`, ['Terisi', bill.roomNumber]);
   res.status(201).json(bill);
 }));
 
@@ -38,8 +39,8 @@ router.post('/:id/payments', asyncHandler(async (req, res, db) => {
   await upsertBill(db, updated);
 
   if (reachedLunas) {
-    await db.query('UPDATE tenants SET status = ? WHERE id = ?', ['Lunas', bill.tenantId]);
-    await db.query('UPDATE rooms SET status = ? WHERE number = ?', ['Terisi', bill.roomNumber]);
+    await db.query(`UPDATE ${T.tenants} SET status = ? WHERE id = ?`, ['Lunas', bill.tenantId]);
+    await db.query(`UPDATE ${T.rooms} SET status = ? WHERE number = ?`, ['Terisi', bill.roomNumber]);
   }
 
   res.json(updated);

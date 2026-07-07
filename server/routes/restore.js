@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from './helpers.js';
-import { getPool } from '../db.js';
+import { getPool, T } from '../db.js';
 import {
   putSettings, upsertRoom, upsertTenant, upsertBill, upsertExpense, upsertComplaint,
 } from '../repo.js';
@@ -15,7 +15,7 @@ router.post('/', asyncHandler(async (req, res) => {
   const conn = await getPool().getConnection();
   try {
     await conn.beginTransaction();
-    for (const t of ['bills', 'complaints', 'expenses', 'tenants', 'rooms']) {
+    for (const t of [T.bills, T.complaints, T.expenses, T.tenants, T.rooms]) {
       await conn.query(`DELETE FROM ${t}`);
     }
     await putSettings(conn, kostSettings);

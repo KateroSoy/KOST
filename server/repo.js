@@ -1,4 +1,4 @@
-import { parseJson, stripNulls } from './db.js';
+import { parseJson, stripNulls, T } from './db.js';
 import { INITIAL_SETTINGS } from './seed-data.js';
 
 // ---------- rooms ----------
@@ -10,18 +10,18 @@ const rowToRoom = (r) => stripNulls({
 });
 
 export async function listRooms(db) {
-  const [rows] = await db.query('SELECT * FROM rooms ORDER BY seq ASC');
+  const [rows] = await db.query(`SELECT * FROM ${T.rooms} ORDER BY seq ASC`);
   return rows.map(rowToRoom);
 }
 
 export async function getRoom(db, id) {
-  const [rows] = await db.query('SELECT * FROM rooms WHERE id = ?', [id]);
+  const [rows] = await db.query(`SELECT * FROM ${T.rooms} WHERE id = ?`, [id]);
   return rows[0] ? rowToRoom(rows[0]) : null;
 }
 
 export async function upsertRoom(db, r) {
   await db.query(
-    `INSERT INTO rooms (id, number, status, type, price, floor, size, facilities, tenantId, notes, lastMaintenanceDate)
+    `INSERT INTO ${T.rooms} (id, number, status, type, price, floor, size, facilities, tenantId, notes, lastMaintenanceDate)
      VALUES (?,?,?,?,?,?,?,?,?,?,?)
      ON DUPLICATE KEY UPDATE number=VALUES(number), status=VALUES(status), type=VALUES(type),
        price=VALUES(price), floor=VALUES(floor), size=VALUES(size), facilities=VALUES(facilities),
@@ -32,7 +32,7 @@ export async function upsertRoom(db, r) {
 }
 
 export async function deleteRoom(db, id) {
-  await db.query('DELETE FROM rooms WHERE id = ?', [id]);
+  await db.query(`DELETE FROM ${T.rooms} WHERE id = ?`, [id]);
 }
 
 // ---------- tenants ----------
@@ -45,18 +45,18 @@ const rowToTenant = (r) => stripNulls({
 });
 
 export async function listTenants(db) {
-  const [rows] = await db.query('SELECT * FROM tenants ORDER BY seq ASC');
+  const [rows] = await db.query(`SELECT * FROM ${T.tenants} ORDER BY seq ASC`);
   return rows.map(rowToTenant);
 }
 
 export async function getTenant(db, id) {
-  const [rows] = await db.query('SELECT * FROM tenants WHERE id = ?', [id]);
+  const [rows] = await db.query(`SELECT * FROM ${T.tenants} WHERE id = ?`, [id]);
   return rows[0] ? rowToTenant(rows[0]) : null;
 }
 
 export async function upsertTenant(db, t) {
   await db.query(
-    `INSERT INTO tenants (id, name, phone, email, emergencyContact, idNumber, roomAssigned, moveInDate, rentAmount, deposit, status, notes, idPhotoUrl)
+    `INSERT INTO ${T.tenants} (id, name, phone, email, emergencyContact, idNumber, roomAssigned, moveInDate, rentAmount, deposit, status, notes, idPhotoUrl)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
      ON DUPLICATE KEY UPDATE name=VALUES(name), phone=VALUES(phone), email=VALUES(email),
        emergencyContact=VALUES(emergencyContact), idNumber=VALUES(idNumber), roomAssigned=VALUES(roomAssigned),
@@ -70,7 +70,7 @@ export async function upsertTenant(db, t) {
 }
 
 export async function deleteTenant(db, id) {
-  await db.query('DELETE FROM tenants WHERE id = ?', [id]);
+  await db.query(`DELETE FROM ${T.tenants} WHERE id = ?`, [id]);
 }
 
 // ---------- bills ----------
@@ -84,18 +84,18 @@ const rowToBill = (r) => stripNulls({
 });
 
 export async function listBills(db) {
-  const [rows] = await db.query('SELECT * FROM bills ORDER BY seq DESC');
+  const [rows] = await db.query(`SELECT * FROM ${T.bills} ORDER BY seq DESC`);
   return rows.map(rowToBill);
 }
 
 export async function getBill(db, id) {
-  const [rows] = await db.query('SELECT * FROM bills WHERE id = ?', [id]);
+  const [rows] = await db.query(`SELECT * FROM ${T.bills} WHERE id = ?`, [id]);
   return rows[0] ? rowToBill(rows[0]) : null;
 }
 
 export async function upsertBill(db, b) {
   await db.query(
-    `INSERT INTO bills (id, tenantId, tenantName, roomId, roomNumber, period, dueDate, rentAmount,
+    `INSERT INTO ${T.bills} (id, tenantId, tenantName, roomId, roomNumber, period, dueDate, rentAmount,
        electricityCharge, waterCharge, additionalFee, discount, lateFee, totalAmount, paidAmount,
        status, paymentMethod, paymentDate, notes)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
@@ -113,7 +113,7 @@ export async function upsertBill(db, b) {
 }
 
 export async function deleteBill(db, id) {
-  await db.query('DELETE FROM bills WHERE id = ?', [id]);
+  await db.query(`DELETE FROM ${T.bills} WHERE id = ?`, [id]);
 }
 
 // ---------- expenses ----------
@@ -123,13 +123,13 @@ const rowToExpense = (r) => stripNulls({
 });
 
 export async function listExpenses(db) {
-  const [rows] = await db.query('SELECT * FROM expenses ORDER BY seq DESC');
+  const [rows] = await db.query(`SELECT * FROM ${T.expenses} ORDER BY seq DESC`);
   return rows.map(rowToExpense);
 }
 
 export async function upsertExpense(db, e) {
   await db.query(
-    `INSERT INTO expenses (id, category, description, date, amount, notes)
+    `INSERT INTO ${T.expenses} (id, category, description, date, amount, notes)
      VALUES (?,?,?,?,?,?)
      ON DUPLICATE KEY UPDATE category=VALUES(category), description=VALUES(description),
        date=VALUES(date), amount=VALUES(amount), notes=VALUES(notes)`,
@@ -138,7 +138,7 @@ export async function upsertExpense(db, e) {
 }
 
 export async function deleteExpense(db, id) {
-  await db.query('DELETE FROM expenses WHERE id = ?', [id]);
+  await db.query(`DELETE FROM ${T.expenses} WHERE id = ?`, [id]);
 }
 
 // ---------- complaints ----------
@@ -150,18 +150,18 @@ const rowToComplaint = (r) => stripNulls({
 });
 
 export async function listComplaints(db) {
-  const [rows] = await db.query('SELECT * FROM complaints ORDER BY seq DESC');
+  const [rows] = await db.query(`SELECT * FROM ${T.complaints} ORDER BY seq DESC`);
   return rows.map(rowToComplaint);
 }
 
 export async function getComplaint(db, id) {
-  const [rows] = await db.query('SELECT * FROM complaints WHERE id = ?', [id]);
+  const [rows] = await db.query(`SELECT * FROM ${T.complaints} WHERE id = ?`, [id]);
   return rows[0] ? rowToComplaint(rows[0]) : null;
 }
 
 export async function upsertComplaint(db, c) {
   await db.query(
-    `INSERT INTO complaints (id, tenantId, tenantName, roomId, roomNumber, title, category, status, priority, date, description, repairCost, notes)
+    `INSERT INTO ${T.complaints} (id, tenantId, tenantName, roomId, roomNumber, title, category, status, priority, date, description, repairCost, notes)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
      ON DUPLICATE KEY UPDATE tenantId=VALUES(tenantId), tenantName=VALUES(tenantName), roomId=VALUES(roomId),
        roomNumber=VALUES(roomNumber), title=VALUES(title), category=VALUES(category), status=VALUES(status),
@@ -173,12 +173,12 @@ export async function upsertComplaint(db, c) {
 }
 
 export async function deleteComplaint(db, id) {
-  await db.query('DELETE FROM complaints WHERE id = ?', [id]);
+  await db.query(`DELETE FROM ${T.complaints} WHERE id = ?`, [id]);
 }
 
 // ---------- settings (singleton row id=1) ----------
 export async function getSettings(db) {
-  const [rows] = await db.query('SELECT data FROM settings WHERE id = 1');
+  const [rows] = await db.query(`SELECT data FROM ${T.settings} WHERE id = 1`);
   if (!rows[0]) {
     await putSettings(db, INITIAL_SETTINGS);
     return INITIAL_SETTINGS;
@@ -188,7 +188,7 @@ export async function getSettings(db) {
 
 export async function putSettings(db, s) {
   await db.query(
-    'INSERT INTO settings (id, data) VALUES (1, ?) ON DUPLICATE KEY UPDATE data=VALUES(data)',
+    `INSERT INTO ${T.settings} (id, data) VALUES (1, ?) ON DUPLICATE KEY UPDATE data=VALUES(data)`,
     [JSON.stringify(s)]
   );
 }

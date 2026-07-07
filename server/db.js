@@ -41,8 +41,19 @@ export const stripNulls = (obj) => {
   return out;
 };
 
+// Nama tabel diberi prefix karena database di hPanel bisa dipakai bersama
+// aplikasi lain (WordPress, ERP) yang punya tabel bernama sama.
+export const T = {
+  rooms: 'kostos_rooms',
+  tenants: 'kostos_tenants',
+  bills: 'kostos_bills',
+  expenses: 'kostos_expenses',
+  complaints: 'kostos_complaints',
+  settings: 'kostos_settings',
+};
+
 const SCHEMA = [
-  `CREATE TABLE IF NOT EXISTS rooms (
+  `CREATE TABLE IF NOT EXISTS ${T.rooms} (
     id VARCHAR(64) PRIMARY KEY,
     seq INT NOT NULL AUTO_INCREMENT, UNIQUE KEY rooms_seq (seq),
     number VARCHAR(32) NOT NULL,
@@ -56,7 +67,7 @@ const SCHEMA = [
     notes TEXT NULL,
     lastMaintenanceDate VARCHAR(32) NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-  `CREATE TABLE IF NOT EXISTS tenants (
+  `CREATE TABLE IF NOT EXISTS ${T.tenants} (
     id VARCHAR(64) PRIMARY KEY,
     seq INT NOT NULL AUTO_INCREMENT, UNIQUE KEY tenants_seq (seq),
     name VARCHAR(191) NOT NULL,
@@ -72,7 +83,7 @@ const SCHEMA = [
     notes TEXT NULL,
     idPhotoUrl TEXT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-  `CREATE TABLE IF NOT EXISTS bills (
+  `CREATE TABLE IF NOT EXISTS ${T.bills} (
     id VARCHAR(64) PRIMARY KEY,
     seq INT NOT NULL AUTO_INCREMENT, UNIQUE KEY bills_seq (seq),
     tenantId VARCHAR(64) NOT NULL,
@@ -94,7 +105,7 @@ const SCHEMA = [
     paymentDate VARCHAR(32) NULL,
     notes TEXT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-  `CREATE TABLE IF NOT EXISTS expenses (
+  `CREATE TABLE IF NOT EXISTS ${T.expenses} (
     id VARCHAR(64) PRIMARY KEY,
     seq INT NOT NULL AUTO_INCREMENT, UNIQUE KEY expenses_seq (seq),
     category VARCHAR(32) NOT NULL,
@@ -103,7 +114,7 @@ const SCHEMA = [
     amount INT NOT NULL DEFAULT 0,
     notes TEXT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-  `CREATE TABLE IF NOT EXISTS complaints (
+  `CREATE TABLE IF NOT EXISTS ${T.complaints} (
     id VARCHAR(64) PRIMARY KEY,
     seq INT NOT NULL AUTO_INCREMENT, UNIQUE KEY complaints_seq (seq),
     tenantId VARCHAR(64) NOT NULL DEFAULT '',
@@ -119,7 +130,7 @@ const SCHEMA = [
     repairCost INT NULL,
     notes TEXT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-  `CREATE TABLE IF NOT EXISTS settings (
+  `CREATE TABLE IF NOT EXISTS ${T.settings} (
     id TINYINT PRIMARY KEY,
     data JSON NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
@@ -129,10 +140,9 @@ async function initOnce() {
   const p = getPool();
   for (const sql of SCHEMA) await p.query(sql);
 
-  // Seed ONLY when the entire database is empty (first boot ever).
-  const tables = ['rooms', 'tenants', 'bills', 'expenses', 'complaints', 'settings'];
+  // Seed ONLY when all app tables are empty (first boot ever).
   let total = 0;
-  for (const t of tables) {
+  for (const t of Object.values(T)) {
     const [rows] = await p.query(`SELECT COUNT(*) AS n FROM ${t}`);
     total += Number(rows[0].n);
   }
