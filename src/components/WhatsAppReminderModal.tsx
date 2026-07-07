@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Copy, Check, ExternalLink, X, Calendar, User, Smartphone } from 'lucide-react';
-import { Bill, KostSettings } from '../types';
+import { Bill, KostSettings, Tenant } from '../types';
 
 interface WhatsAppReminderModalProps {
   bill: Bill | null;
   kostSettings: KostSettings;
+  tenants?: Tenant[];
   onClose: () => void;
 }
 
-export function WhatsAppReminderModal({ bill, kostSettings, onClose }: WhatsAppReminderModalProps) {
+export function WhatsAppReminderModal({ bill, kostSettings, tenants = [], onClose }: WhatsAppReminderModalProps) {
   const [copied, setCopied] = useState(false);
   const [formattedMessage, setFormattedMessage] = useState('');
 
@@ -41,11 +42,10 @@ export function WhatsAppReminderModal({ bill, kostSettings, onClose }: WhatsAppR
 
   // Formatting local Indonesian phone numbers (e.g. 08129876 to 628129876) dynamically
   const getWhatsAppLink = () => {
-    let rawPhone = bill.tenantId ? '081299998888' : '081299998888'; // fallback
-    
-    // Attempt to locate official phone in dummy index or fallback
-    const tenantPhoneStr = bill.notes || '081299998888'; 
-    const cleanedPhone = tenantPhoneStr.replace(/[^0-9]/g, '');
+    // Look up actual tenant phone number from tenants list
+    const tenant = tenants.find(t => t.id === bill.tenantId);
+    const rawPhone = tenant?.phone || '081299998888'; // fallback
+    const cleanedPhone = rawPhone.replace(/[^0-9]/g, '');
     
     let formattedPhone = cleanedPhone;
     if (cleanedPhone.startsWith('0')) {
@@ -56,6 +56,12 @@ export function WhatsAppReminderModal({ bill, kostSettings, onClose }: WhatsAppR
 
     const encodedText = encodeURIComponent(formattedMessage);
     return `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedText}`;
+  };
+
+  // Get tenant phone for display
+  const getTenantPhone = () => {
+    const tenant = tenants.find(t => t.id === bill.tenantId);
+    return tenant?.phone || '-';
   };
 
   const handleCopy = () => {
@@ -91,12 +97,14 @@ export function WhatsAppReminderModal({ bill, kostSettings, onClose }: WhatsAppR
 
           <div className="grid grid-cols-2 gap-3 text-slate-600">
             <div className="p-2 border border-slate-100 bg-slate-50/50 rounded-xl space-y-0.5">
-              <span className="text-[9px] text-slate-400 uppercase">PENYEMBA KOST:</span>
+              <span className="text-[9px] text-slate-400 uppercase">PENYEWA KOST:</span>
               <p className="font-extrabold text-slate-900">{bill.tenantName}</p>
+              <p className="text-[9px] text-slate-500">📱 {getTenantPhone()}</p>
             </div>
             <div className="p-2 border border-slate-100 bg-slate-50/50 rounded-xl space-y-0.5">
               <span className="text-[9px] text-slate-400 uppercase">JUMLAH TUNGGAKAN:</span>
               <p className="font-extrabold text-teal-700">{formatIDR(bill.totalAmount - bill.paidAmount)}</p>
+              <p className="text-[9px] text-slate-500">Kamar {bill.roomNumber} • {bill.period}</p>
             </div>
           </div>
 

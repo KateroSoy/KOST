@@ -8,6 +8,7 @@ import {
   INITIAL_EXPENSES, 
   INITIAL_COMPLAINTS 
 } from './data';
+import { fetchAllData, syncToBackend } from './api';
 
 // Import All Views
 import { LandingPage } from './components/LandingPage';
@@ -40,7 +41,11 @@ export default function App() {
 
   // Navigation and UI layouts
   const [selectedTab, setSelectedTab] = useState<string>('dashboard');
-  const [selectedMonth, setSelectedMonth] = useState<string>('Juni 2026');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const now = new Date();
+    return `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Focus detail overlays / modals selection states
@@ -53,81 +58,42 @@ export default function App() {
   const [billForPayment, setBillForPayment] = useState<Bill | null>(null);
   const [billForReminder, setBillForReminder] = useState<Bill | null>(null);
 
-  // 1. INITIALIZE DATABASE FROM LOCALSTORAGE OR FALLBACK SEEDS
+  // 1. INITIALIZE DATABASE FROM HYBRID API (Backend first, fallback LocalStorage)
   useEffect(() => {
     try {
       const loggedIn = localStorage.getItem('kostos_logged_in');
-      if (loggedIn === 'true') {
-        setAuthMode('dashboard');
-      }
+      if (loggedIn === 'true') setAuthMode('dashboard');
+    } catch { /* ignore */ }
 
-      const localSettings = localStorage.getItem('kostos_settings');
-      if (localSettings) setKostSettings(JSON.parse(localSettings));
-
-      const localRooms = localStorage.getItem('kostos_rooms');
-      if (localRooms) {
-        setRooms(JSON.parse(localRooms));
-      } else {
-        setRooms(INITIAL_ROOMS);
-        localStorage.setItem('kostos_rooms', JSON.stringify(INITIAL_ROOMS));
-      }
-
-      const localTenants = localStorage.getItem('kostos_tenants');
-      if (localTenants) {
-        setTenants(JSON.parse(localTenants));
-      } else {
-        setTenants(INITIAL_TENANTS);
-        localStorage.setItem('kostos_tenants', JSON.stringify(INITIAL_TENANTS));
-      }
-
-      const localBills = localStorage.getItem('kostos_bills');
-      if (localBills) {
-        setBills(JSON.parse(localBills));
-      } else {
-        setBills(INITIAL_BILLS);
-        localStorage.setItem('kostos_bills', JSON.stringify(INITIAL_BILLS));
-      }
-
-      const localExpenses = localStorage.getItem('kostos_expenses');
-      if (localExpenses) {
-        setExpenses(JSON.parse(localExpenses));
-      } else {
-        setExpenses(INITIAL_EXPENSES);
-        localStorage.setItem('kostos_expenses', JSON.stringify(INITIAL_EXPENSES));
-      }
-
-      const localComplaints = localStorage.getItem('kostos_complaints');
-      if (localComplaints) {
-        setComplaints(JSON.parse(localComplaints));
-      } else {
-        setComplaints(INITIAL_COMPLAINTS);
-        localStorage.setItem('kostos_complaints', JSON.stringify(INITIAL_COMPLAINTS));
-      }
-
-    } catch (e) {
-      console.error("Gagal memuat LocalStorage data. Mulai dengan seed default.", e);
-    }
+    fetchAllData().then((data) => {
+      setKostSettings(data.settings);
+      setRooms(data.rooms);
+      setTenants(data.tenants);
+      setBills(data.bills);
+      setExpenses(data.expenses);
+      setComplaints(data.complaints);
+    });
   }, []);
 
   // 2. SYNCHRONIZE STATE TO LOCALSTORAGE
   useEffect(() => {
-    if (rooms.length > 0) localStorage.setItem('kostos_rooms', JSON.stringify(rooms));
+    localStorage.setItem('kostos_rooms', JSON.stringify(rooms));
   }, [rooms]);
 
   useEffect(() => {
-    if (tenants.length > 0) localStorage.setItem('kostos_tenants', JSON.stringify(tenants));
+    localStorage.setItem('kostos_tenants', JSON.stringify(tenants));
   }, [tenants]);
 
   useEffect(() => {
-    if (bills.length > 0) localStorage.setItem('kostos_bills', JSON.stringify(bills));
+    localStorage.setItem('kostos_bills', JSON.stringify(bills));
   }, [bills]);
 
   useEffect(() => {
-    if (expenses.length > 0) localStorage.setItem('kostos_expenses', JSON.stringify(expenses));
+    localStorage.setItem('kostos_expenses', JSON.stringify(expenses));
   }, [expenses]);
 
   useEffect(() => {
-    if (complaints.length > 0) localStorage.setItem('kostos_complaints', JSON.stringify(complaints));
+    localStorage.setItem('kostos_complaints', JSON.stringify(complaints));
   }, [complaints]);
 
   useEffect(() => {
@@ -135,23 +101,27 @@ export default function App() {
   }, [kostSettings]);
 
 
-  // 3. CORE STATE MUTATORS
+  // 3. CORE STATE MUTATORS (Optimistic UI + API Sync)
   const handleUpdateSettings = (newSettings: KostSettings) => {
     setKostSettings(newSettings);
+    syncToBackend('settings', 'PUT', newSettings);
   };
 
   const handleAddRoom = (newRoom: Room) => {
     const updated = [...rooms, newRoom];
     setRooms(updated);
+    syncToBackend('rooms', 'POST', newRoom);
   };
 
   const handleUpdateRoomStatus = (roomId: string, nextStatus: RoomStatus) => {
     const updated = rooms.map(r => r.id === roomId ? { ...r, status: nextStatus } : r);
     setRooms(updated);
+    syncToBackend(`rooms/${roomId}`, 'PATCH', { status: nextStatus });
   };
 
   const handleDeleteRoom = (id: string) => {
     setRooms(prev => prev.filter(r => r.id !== id));
+    syncToBackend(`rooms/${id}`, 'DELETE');
   };
 
   const handleAddTenant = (newTenant: Tenant, assignedRoomId: string) => {
@@ -163,10 +133,24 @@ export default function App() {
       r.id === assignedRoomId ? { ...r, status: 'Terisi' as RoomStatus, tenantId: newTenant.id } : r
     ));
 
-    // 3. Create a default bill invoice for June 2026 for this new tenant automatically!
+    // 3. Create initial bill for new tenant with correct due date
     const activeRoom = rooms.find(r => r.id === assignedRoomId);
     const roomNo = activeRoom ? activeRoom.number : newTenant.roomAssigned;
     const defaultRentAmount = activeRoom ? activeRoom.price : newTenant.rentAmount;
+
+    // Compute due date from selectedMonth + kostSettings.defaultDueDateDay
+    const computeDueDate = () => {
+      const MONTHS: Record<string,string> = {
+        'Januari': '01', 'Februari': '02', 'Maret': '03', 'April': '04',
+        'Mei': '05', 'Juni': '06', 'Juli': '07', 'Agustus': '08',
+        'September': '09', 'Oktober': '10', 'November': '11', 'Desember': '12'
+      };
+      const parts = selectedMonth.split(' ');
+      const monthNum = MONTHS[parts[0]] || '06';
+      const year = parts[1] || String(new Date().getFullYear());
+      const day = String(kostSettings.defaultDueDateDay || 5).padStart(2, '0');
+      return `${year}-${monthNum}-${day}`;
+    };
 
     const autoInceptionBill: Bill = {
       id: `bill-auto-${Date.now()}`,
@@ -175,7 +159,7 @@ export default function App() {
       roomId: assignedRoomId,
       roomNumber: roomNo,
       period: selectedMonth,
-      dueDate: `2026-06-05`,
+      dueDate: computeDueDate(),
       rentAmount: defaultRentAmount,
       electricityCharge: 0,
       waterCharge: 0,
@@ -188,41 +172,40 @@ export default function App() {
     };
 
     setBills(prev => [autoInceptionBill, ...prev]);
+    
+    // Sync to backend (Tenant auto-creates bill in backend too, so we just send tenant)
+    syncToBackend('tenants', 'POST', newTenant);
   };
 
   const handleMoveOutTenant = (tenantId: string, roomNumber: string) => {
-    // 1. Filter out or remove from active tenants list
     setTenants(prev => prev.filter(t => t.id !== tenantId));
-
-    // 2. Clear Room assigned: set to 'Kosong' and remove tenantId
     setRooms(prev => prev.map(r => 
       r.number === roomNumber ? { ...r, status: 'Kosong' as RoomStatus, tenantId: undefined } : r
     ));
-
-    // 3. Automatically cancel/clear unpaid bills of this tenant
     setBills(prev => prev.filter(b => !(b.tenantId === tenantId && b.status !== 'Lunas')));
+    
+    syncToBackend(`tenants/${tenantId}/move-out`, 'POST');
   };
 
   const handleDeleteTenant = (id: string) => {
     setTenants(prev => prev.filter(t => t.id !== id));
+    syncToBackend(`tenants/${id}`, 'DELETE');
   };
 
   const handleAddBill = (newBill: Bill) => {
     setBills(prev => [newBill, ...prev]);
-
-    // Update corresponding tenant status to 'Belum Bayar'
     setTenants(prev => prev.map(t => 
       t.id === newBill.tenantId ? { ...t, status: 'Belum Bayar' as TenantStatus } : t
     ));
-    
-    // Update corresponding Room status if necessary
     setRooms(prev => prev.map(r =>
       r.number === newBill.roomNumber ? { ...r, status: 'Terisi' as RoomStatus } : r
     ));
+    syncToBackend('bills', 'POST', newBill);
   };
 
   const handleDeleteBill = (id: string) => {
     setBills(prev => prev.filter(b => b.id !== id));
+    syncToBackend(`bills/${id}`, 'DELETE');
   };
 
   const handleRecordPayment = (billId: string, amountPaid: number, method: string, date: string, notes?: string) => {
@@ -232,7 +215,6 @@ export default function App() {
         const reachedLunas = nextPaid >= b.totalAmount;
         const statusVal = reachedLunas ? 'Lunas' : 'Sebagian';
 
-        // 1. Immediately update corresponding Tenant and Room status!
         if (reachedLunas) {
           setTenants(tPrev => tPrev.map(t => 
             t.id === b.tenantId ? { ...t, status: 'Lunas' as TenantStatus } : t
@@ -242,7 +224,7 @@ export default function App() {
           ));
         }
 
-        return {
+        const updatedBill = {
           ...b,
           paidAmount: nextPaid,
           status: statusVal,
@@ -250,6 +232,8 @@ export default function App() {
           paymentDate: date,
           notes: notes || b.notes
         };
+        syncToBackend(`bills/${billId}/payments`, 'POST', { amountPaid, method, date, notes });
+        return updatedBill;
       }
       return b;
     }));
@@ -257,14 +241,17 @@ export default function App() {
 
   const handleAddExpense = (newExpense: Expense) => {
     setExpenses(prev => [newExpense, ...prev]);
+    syncToBackend('expenses', 'POST', newExpense);
   };
 
   const handleDeleteExpense = (id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
+    syncToBackend(`expenses/${id}`, 'DELETE');
   };
 
   const handleAddComplaint = (newComplaint: Complaint) => {
     setComplaints(prev => [newComplaint, ...prev]);
+    syncToBackend('complaints', 'POST', newComplaint);
   };
 
   const handleUpdateComplaintStatus = (id: string, status: ComplaintStatus, repairCost?: number, notes?: string) => {
@@ -283,6 +270,7 @@ export default function App() {
           handleAddExpense(autoRepairExpense);
         }
 
+        syncToBackend(`complaints/${id}`, 'PATCH', { status, repairCost, notes });
         return {
           ...c,
           status,
@@ -296,40 +284,49 @@ export default function App() {
 
   const handleDeleteComplaint = (id: string) => {
     setComplaints(prev => prev.filter(c => c.id !== id));
+    syncToBackend(`complaints/${id}`, 'DELETE');
   };
 
 
   // 4. LANDING, AUTHENTICATION AND ONBOARDING FLOW handlers
-  const handleFirstTimeOnboard = (kostIn: any) => {
+  const handleFirstTimeOnboard = (kostConfig: Partial<KostSettings>, roomCount: number, basePrice: number) => {
     const freshSettings: KostSettings = {
       ...kostSettings,
-      kostName: kostIn.name,
-      ownerName: kostIn.owner,
-      whatsapp: kostIn.phone,
-      bankAccounts: [
-        { id: 'bank-a', bankName: 'BCA', accountNumber: kostIn.bankNo, accountHolder: kostIn.owner.toUpperCase() }
-      ]
+      kostName: kostConfig.kostName || 'Kost Saya',
+      ownerName: kostConfig.ownerName || 'Pemilik',
+      whatsapp: kostConfig.whatsapp || '',
+      address: kostConfig.address || '',
+      bankAccounts: kostConfig.bankAccounts || kostSettings.bankAccounts,
+      defaultDueDateDay: kostConfig.defaultDueDateDay || 5,
     };
     setKostSettings(freshSettings);
+    localStorage.setItem('kostos_settings', JSON.stringify(freshSettings));
 
     // Build fresh empty room grids from capacity
     const freshRooms: Room[] = [];
-    for (let i = 1; i <= kostIn.capacity; i++) {
-      const roomNo = `A0${i}`;
+    for (let i = 1; i <= roomCount; i++) {
+      const roomNo = i < 10 ? `A0${i}` : `A${i}`;
       freshRooms.push({
         id: `room-onb-${i}`,
         number: roomNo,
         status: 'Kosong',
         type: 'Standard',
-        price: kostIn.standardPrice,
+        price: basePrice,
         floor: 1,
         size: '3x3 m',
         facilities: ['Kipas Angin', 'Kasur Single', 'WiFi', 'Lemari Baju']
       });
     }
     setRooms(freshRooms);
+    setTenants([]);
+    setBills([]);
+    setExpenses([]);
+    setComplaints([]);
     localStorage.setItem('kostos_rooms', JSON.stringify(freshRooms));
-
+    localStorage.setItem('kostos_tenants', JSON.stringify([]));
+    localStorage.setItem('kostos_bills', JSON.stringify([]));
+    localStorage.setItem('kostos_expenses', JSON.stringify([]));
+    localStorage.setItem('kostos_complaints', JSON.stringify([]));
     localStorage.setItem('kostos_logged_in', 'true');
     setAuthMode('dashboard');
   };
@@ -379,6 +376,8 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const [backupMsg, setBackupMsg] = useState<{type: 'success' | 'error', text: string} | null>(null);
+
   const handleImportBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -389,17 +388,21 @@ export default function App() {
         const backupData = JSON.parse(e.target?.result as string);
         if (backupData.version && backupData.kostSettings) {
           setKostSettings(backupData.kostSettings);
-          if (backupData.rooms) setRooms(backupData.rooms);
-          if (backupData.tenants) setTenants(backupData.tenants);
-          if (backupData.bills) setBills(backupData.bills);
-          if (backupData.expenses) setExpenses(backupData.expenses);
-          if (backupData.complaints) setComplaints(backupData.complaints);
-          alert("✓ Database KOSTOS sukses dipulihkan dari file backup!");
+          if (backupData.rooms) { setRooms(backupData.rooms); localStorage.setItem('kostos_rooms', JSON.stringify(backupData.rooms)); }
+          if (backupData.tenants) { setTenants(backupData.tenants); localStorage.setItem('kostos_tenants', JSON.stringify(backupData.tenants)); }
+          if (backupData.bills) { setBills(backupData.bills); localStorage.setItem('kostos_bills', JSON.stringify(backupData.bills)); }
+          if (backupData.expenses) { setExpenses(backupData.expenses); localStorage.setItem('kostos_expenses', JSON.stringify(backupData.expenses)); }
+          if (backupData.complaints) { setComplaints(backupData.complaints); localStorage.setItem('kostos_complaints', JSON.stringify(backupData.complaints)); }
+          localStorage.setItem('kostos_settings', JSON.stringify(backupData.kostSettings));
+          setBackupMsg({ type: 'success', text: '✓ Database KOSTOS sukses dipulihkan dari file backup!' });
+          setTimeout(() => setBackupMsg(null), 4000);
         } else {
-          alert("⚠️ Format file JSON backup belum valid.");
+          setBackupMsg({ type: 'error', text: '⚠️ Format file JSON backup belum valid.' });
+          setTimeout(() => setBackupMsg(null), 4000);
         }
-      } catch (err) {
-        alert("⚠️ Gagal membaca berkas backup. Pastikan file JSON sah.");
+      } catch {
+        setBackupMsg({ type: 'error', text: '⚠️ Gagal membaca berkas backup. Pastikan file JSON sah.' });
+        setTimeout(() => setBackupMsg(null), 4000);
       }
     };
     reader.readAsText(file);
@@ -577,16 +580,7 @@ export default function App() {
           }
           setAuthMode(mode);
         }}
-        onInitializeKost={(kostConfig, roomCount, basePrice) => {
-          handleFirstTimeOnboard({
-            name: kostConfig.kostName || 'Kost Mawar Indah',
-            owner: kostConfig.ownerName || 'Ibu Indah Lestari',
-            phone: kostConfig.whatsapp || '081234567890',
-            bankNo: kostConfig.bankAccounts?.[0]?.accountNumber || '2330998877',
-            capacity: roomCount,
-            standardPrice: basePrice
-          });
-        }}
+        onInitializeKost={handleFirstTimeOnboard}
       />
     );
   }
@@ -634,11 +628,21 @@ export default function App() {
 
       {/* 3. FLOATING WHATSAPP BROADCAST MAKER MODAL WINDOW */}
       {billForReminder && (
-        <WhatsAppReminderModal 
+      <WhatsAppReminderModal 
           bill={billForReminder} 
           kostSettings={kostSettings} 
+          tenants={tenants}
           onClose={() => setBillForReminder(null)} 
         />
+      )}
+
+      {/* 4. GLOBAL TOAST NOTIFICATION for backup/restore feedback */}
+      {backupMsg && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-2xl text-xs font-bold shadow-xl text-white animate-in slide-in-from-bottom-4 duration-300 ${
+          backupMsg.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
+        }`}>
+          {backupMsg.text}
+        </div>
       )}
 
     </div>

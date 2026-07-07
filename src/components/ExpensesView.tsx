@@ -74,8 +74,19 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
     }).format(num);
   };
 
-  // Extract monthly key (e.g., "6" or "5") for current month filter
-  const monthKey = selectedMonth === 'Juni 2026' ? '2026-06' : selectedMonth === 'Mei 2026' ? '2026-05' : '2026-07';
+  // Dynamic month key builder: "Juni 2026" -> "2026-06"
+  const getMonthKey = (month: string): string => {
+    const monthMap: Record<string, string> = {
+      'Januari': '01', 'Februari': '02', 'Maret': '03', 'April': '04',
+      'Mei': '05', 'Juni': '06', 'Juli': '07', 'Agustus': '08',
+      'September': '09', 'Oktober': '10', 'November': '11', 'Desember': '12'
+    };
+    const parts = month.split(' ');
+    const monthNum = monthMap[parts[0]] || '06';
+    const year = parts[1] || '2026';
+    return `${year}-${monthNum}`;
+  };
+  const monthKey = getMonthKey(selectedMonth);
 
   // Filter local listings
   const filteredExpenses = expenses.filter(e => {

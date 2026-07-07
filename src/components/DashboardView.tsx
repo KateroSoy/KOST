@@ -23,14 +23,22 @@ export function DashboardView({
   onNavigateToTab, onOpenReminderModal, onOpenPaymentForm
 }: DashboardViewProps) {
   
+  // Dynamic month key builder: "Juni 2026" -> "2026-06"
+  const getMonthKey = (month: string): string => {
+    const monthMap: Record<string, string> = {
+      'Januari': '01', 'Februari': '02', 'Maret': '03', 'April': '04',
+      'Mei': '05', 'Juni': '06', 'Juli': '07', 'Agustus': '08',
+      'September': '09', 'Oktober': '10', 'November': '11', 'Desember': '12'
+    };
+    const parts = month.split(' ');
+    const monthNum = monthMap[parts[0]] || '06';
+    const year = parts[1] || '2026';
+    return `${year}-${monthNum}`;
+  };
+
   // Calculate stats for current month
   const activeBills = bills.filter(b => b.period === selectedMonth);
-  const activeExpenses = expenses.filter(e => {
-    // Basic helper: if expense date includes the month code
-    // For June 2026: "2026-06"
-    const monthKey = selectedMonth === 'Juni 2026' ? '2026-06' : selectedMonth === 'Mei 2026' ? '2026-05' : '2026-07';
-    return e.date.startsWith(monthKey);
-  });
+  const activeExpenses = expenses.filter(e => e.date.startsWith(getMonthKey(selectedMonth)));
 
   const totalRooms = rooms.length;
   const occupiedRooms = rooms.filter(r => r.status === 'Terisi' || r.status === 'Menunggak').length;

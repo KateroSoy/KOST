@@ -16,12 +16,38 @@ export function ReportsView({ bills, rooms, tenants, expenses, selectedMonth }: 
   const [startDate, setStartDate] = useState('2026-05-01');
   const [endDate, setEndDate] = useState('2026-06-30');
 
-  // Filter keys
-  const getMonthKey = (m: string) => {
-    if (m === 'Juni 2026') return '2026-06';
-    if (m === 'Mei 2026') return '2026-05';
-    return '2026-07';
+  // Dynamic month key builder: "Juni 2026" -> "2026-06"
+  const getMonthKey = (month: string): string => {
+    const monthMap: Record<string, string> = {
+      'Januari': '01', 'Februari': '02', 'Maret': '03', 'April': '04',
+      'Mei': '05', 'Juni': '06', 'Juli': '07', 'Agustus': '08',
+      'September': '09', 'Oktober': '10', 'November': '11', 'Desember': '12'
+    };
+    const parts = month.split(' ');
+    const monthNum = monthMap[parts[0]] || '06';
+    const year = parts[1] || '2026';
+    return `${year}-${monthNum}`;
   };
+
+  // Build 3-month trend window around selectedMonth
+  const buildTrendMonths = (): string[] => {
+    const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const parts = selectedMonth.split(' ');
+    const baseMonthIdx = MONTHS.indexOf(parts[0]);
+    const baseYear = parseInt(parts[1] || '2026', 10);
+    if (baseMonthIdx === -1) return [selectedMonth];
+    const result: string[] = [];
+    for (let i = -1; i <= 1; i++) {
+      let mi = baseMonthIdx + i;
+      let yr = baseYear;
+      if (mi < 0) { mi = 11; yr--; }
+      if (mi > 11) { mi = 0; yr++; }
+      result.push(`${MONTHS[mi]} ${yr}`);
+    }
+    return result;
+  };
+
+  const monthsTrend = buildTrendMonths();
 
   const getBillRelevantDate = (b: Bill) => {
     return b.paymentDate || b.dueDate;
@@ -89,8 +115,7 @@ export function ReportsView({ bills, rooms, tenants, expenses, selectedMonth }: 
     }
   };
 
-  // Static chart data calculations for trend representation (Mei vs Juni vs Juli)
-  const monthsTrend = ['Mei 2026', 'Juni 2026', 'Juli 2026'];
+  // Chart data calculations - dynamic from real bills/expenses
   const trendData = monthsTrend.map(m => {
     const mKey = getMonthKey(m);
     const mBills = bills.filter(b => b.period === m);
@@ -103,6 +128,20 @@ export function ReportsView({ bills, rooms, tenants, expenses, selectedMonth }: 
     const expVal = mExpenses.reduce((sum, e) => sum + e.amount, 0);
     return { name: m.split(' ')[0], income: inc, expense: expVal };
   });
+
+  // Compute SVG coordinates from trendData
+  const maxValue = Math.max(...trendData.map(d => Math.max(d.income, d.expense)), 1);
+  const svgWidth = 400;
+  const svgHeight = 150;
+  const svgPadding = 30;
+  const plotWidth = svgWidth - svgPadding * 2;
+  const plotHeight = svgHeight - 20;
+
+  const toSvgX = (i: number) => svgPadding + (i / (trendData.length - 1 || 1)) * plotWidth;
+  const toSvgY = (val: number) => svgHeight - 10 - (val / maxValue) * (plotHeight - 20);
+
+  const incomePath = trendData.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(i)} ${toSvgY(d.income)}`).join(' ');
+  const expensePath = trendData.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(i)} ${toSvgY(d.expense)}`).join(' ');
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto px-1 sm:px-0">
@@ -392,7 +431,7 @@ export function ReportsView({ bills, rooms, tenants, expenses, selectedMonth }: 
               {/* Pure SVG Line Plot */}
               <div className="w-full bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col justify-between overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[10px] text-slate-400">
-                  <span className="font-semibold">Puncak: Rp 5.000.000</span>
+                  <span className="font-semibold">Max: {formatIDR(maxValue)}</span>
                   <div className="flex flex-wrap gap-2.5">
                     <span className="flex items-center gap-1 font-semibold"><span className="h-2 w-2 rounded-full bg-teal-500"></span>Pendapatan</span>
                     <span className="flex items-center gap-1 font-semibold"><span className="h-2 w-2 rounded-full bg-rose-500"></span>Biaya</span>
@@ -408,40 +447,37 @@ export function ReportsView({ bills, rooms, tenants, expenses, selectedMonth }: 
                       <line x1="0" y1="75" x2="400" y2="75" stroke="#f1f5f9" strokeDasharray="3" />
                       <line x1="0" y1="125" x2="400" y2="125" stroke="#f1f5f9" strokeDasharray="3" />
 
-                      {/* Plotting mei vs juni vs juli */}
-                      {/* Mei: 3,320,000 (y = 85), Juni: 3,320,000 (y = 65), Juli: 0. Scaling on 5M */}
-                      {/* Line for income */}
+                      {/* Income Line */}
                       <path 
-                        d="M 50 85 L 200 65 L 350 140" 
+                        d={incomePath} 
                         stroke="#0d9488" 
                         strokeWidth="3.5" 
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
-                      {/* Circle markers */}
-                      <circle cx="50" cy="85" r="5" fill="#ffffff" stroke="#0d9488" strokeWidth="3" />
-                      <circle cx="200" cy="65" r="5" fill="#ffffff" stroke="#0d9488" strokeWidth="3" />
-                      <circle cx="350" cy="140" r="5" fill="#ffffff" stroke="#0d9488" strokeWidth="3" />
+                      {trendData.map((d, i) => (
+                        <circle key={`inc-${i}`} cx={toSvgX(i)} cy={toSvgY(d.income)} r="5" fill="#ffffff" stroke="#0d9488" strokeWidth="3" />
+                      ))}
 
-                      {/* Line for expenses  Mei: 2.500.000, Juni: 0. Scaling on 5M */}
+                      {/* Expense Line */}
                       <path 
-                        d="M 50 100 L 200 148 L 350 148" 
+                        d={expensePath} 
                         stroke="#f43f5e" 
                         strokeWidth="2.5" 
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
-                      <circle cx="50" cy="100" r="4" fill="#ffffff" stroke="#f43f5e" strokeWidth="2.5" />
-                      <circle cx="200" cy="148" r="4" fill="#ffffff" stroke="#f43f5e" strokeWidth="2.5" />
-                      <circle cx="350" cy="148" r="4" fill="#ffffff" stroke="#f43f5e" strokeWidth="2.5" />
+                      {trendData.map((d, i) => (
+                        <circle key={`exp-${i}`} cx={toSvgX(i)} cy={toSvgY(d.expense)} r="4" fill="#ffffff" stroke="#f43f5e" strokeWidth="2.5" />
+                      ))}
                     </svg>
                   </div>
                 </div>
 
                 <div className="flex justify-between text-[9px] sm:text-[10px] font-bold text-slate-500 border-t border-slate-100 pt-2.5 font-mono gap-1">
-                  <span className="flex-1 text-center truncate">Mei <span className="hidden xs:inline">(Mulai)</span></span>
-                  <span className="flex-1 text-center truncate">Juni <span className="hidden xs:inline">(Aktif)</span></span>
-                  <span className="flex-1 text-center truncate">Juli <span className="hidden xs:inline">(Proyeksi)</span></span>
+                  {trendData.map((d, i) => (
+                    <span key={i} className="flex-1 text-center truncate">{d.name}</span>
+                  ))}
                 </div>
               </div>
             </div>

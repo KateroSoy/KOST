@@ -309,7 +309,7 @@ export function ComplaintsView({
                     onSelectComplaintId(null);
                     setShowCompleteAction(false);
                   }}
-                  className="px-4 py-2.5 bg-slate-200 text-slate-800 hover:bg-slate-350 font-bold rounded-xl cursor-pointer"
+                  className="px-4 py-2.5 bg-slate-200 text-slate-800 hover:bg-slate-300 font-bold rounded-xl cursor-pointer"
                 >
                   Tutup
                 </button>
@@ -508,7 +508,7 @@ export function ComplaintsView({
                 <div className="mt-4 pt-3 border-t border-slate-100">
                   <button
                     onClick={() => onSelectComplaintId(comp.id)}
-                    className="w-full py-1.5 bg-slate-105 hover:bg-slate-200/80 text-[10px] font-extrabold text-slate-700 rounded-lg text-center transition-all cursor-pointer"
+                    className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-[10px] font-extrabold text-slate-700 rounded-lg text-center transition-all cursor-pointer"
                   >
                     Buka Tiket Laporan
                   </button>

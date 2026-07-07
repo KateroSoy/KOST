@@ -90,9 +90,18 @@ export function Header({ settings, currentTab, onQuickAction, selectedMonth, onC
                 onChange={(e) => onChangeMonth(e.target.value)}
                 className="bg-transparent border-none appearance-none outline-none font-extrabold cursor-pointer text-slate-800 text-[11px] sm:text-xs pr-1 focus:ring-0 active:scale-[0.98] transition-transform"
               >
-                <option value="Mei 2026">Mei 25/26</option>
-                <option value="Juni 2026">Juni 2026</option>
-                <option value="Juli 2026">Juli 2026</option>
+                {(() => {
+                  const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                  const now = new Date();
+                  const options = [];
+                  // Generate 2 months before + current + 3 months forward
+                  for (let i = -2; i <= 3; i++) {
+                    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                    const label = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+                    options.push(<option key={label} value={label}>{label}</option>);
+                  }
+                  return options;
+                })()}
               </select>
               <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-2 pointer-events-none" />
             </div>

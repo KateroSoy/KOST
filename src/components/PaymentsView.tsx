@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Coins, CheckCircle, Receipt, User, ArrowRight, Share2, Clipboard, MessageSquare, Plus, Clock, Landmark, Smartphone, X } from 'lucide-react';
 import { Bill, Tenant, Room } from '../types';
 
@@ -26,9 +26,19 @@ export function PaymentsView({
   const [paymentNotes, setPaymentNotes] = useState<string>('');
   const [formError, setFormError] = useState<string>('');
 
+  // Sync state when parent passes a bill to focus on
+  useEffect(() => {
+    if (selectedBillForPayment) {
+      setActiveBillSelection(selectedBillForPayment);
+      setPaymentAmount(selectedBillForPayment.totalAmount - selectedBillForPayment.paidAmount);
+      setFormError('');
+    }
+  }, [selectedBillForPayment]);
+
   // Controlling Success State Overlay
   const [successRecorded, setSuccessRecorded] = useState<boolean>(false);
   const [lastRecordedBill, setLastRecordedBill] = useState<Bill | null>(null);
+  const [copiedMsg, setCopiedMsg] = useState(false);
 
   const handleActiveBillChange = (billId: string) => {
     const bill = bills.find(b => b.id === billId);
@@ -133,12 +143,16 @@ export function PaymentsView({
             <button
               onClick={() => {
                 const messageText = `Halo ${lastRecordedBill.tenantName}, kwitansi sewa kamar ${lastRecordedBill.roomNumber} periode ${lastRecordedBill.period} telah lunas diterima sebesar Rp ${paymentAmount.toLocaleString('id-ID')} via ${lastRecordedBill.paymentMethod} pada ${lastRecordedBill.paymentDate}. Terima kasih lunas ya!`;
-                navigator.clipboard.writeText(messageText);
-                alert("✓ Pesan bukti kwitansi berhasil dicopy ke clipboard!");
+                navigator.clipboard.writeText(messageText).then(() => {
+                  setCopiedMsg(true);
+                  setTimeout(() => setCopiedMsg(false), 2500);
+                });
               }}
-              className="w-full py-2.5 bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              className={`w-full py-2.5 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                copiedMsg ? 'bg-emerald-600 text-white' : 'bg-slate-950 hover:bg-slate-800 text-white'
+              }`}
             >
-              <Clipboard className="h-4 w-4" /> Copy Bukti WA untuk Anak Kost
+              <Clipboard className="h-4 w-4" /> {copiedMsg ? '✓ Berhasil Dicopy ke Clipboard!' : 'Copy Bukti WA untuk Anak Kost'}
             </button>
 
             <button

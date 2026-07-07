@@ -387,9 +387,17 @@ export function BillsView({
                         value={billPeriod}
                         onChange={(e) => setBillPeriod(e.target.value)}
                       >
-                        <option value="Mei 2026">Mei 2026</option>
-                        <option value="Juni 2026">Juni 2026</option>
-                        <option value="Juli 2026">Juli 2026</option>
+                        {(() => {
+                          const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                          const now = new Date();
+                          const options = [];
+                          for (let i = -2; i <= 3; i++) {
+                            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                            const label = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+                            options.push(<option key={label} value={label}>{label}</option>);
+                          }
+                          return options;
+                        })()}
                       </select>
                     </div>
 

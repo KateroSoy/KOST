@@ -309,7 +309,7 @@ export function SettingsView({ kostSettings, onUpdateSettings, onExportBackup, o
                     <h5 className="font-extrabold text-xs text-slate-900">2. Unggah Salinan Cadangan (Restore)</h5>
                     <p className="text-[9px] text-slate-400">Pilih file backup (.json) yang diunduh sebelumnya.</p>
                   </div>
-                  <label className="py-2 px-3.5 bg-teal-650 hover:bg-teal-700 text-cyan-50 font-bold rounded-lg cursor-pointer text-center whitespace-nowrap">
+                  <label className="py-2 px-3.5 bg-teal-600 hover:bg-teal-700 text-cyan-50 font-bold rounded-lg cursor-pointer text-center whitespace-nowrap">
                     Pilih File Recovery
                     <input
                       type="file"
