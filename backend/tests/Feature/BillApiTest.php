@@ -42,7 +42,17 @@ class BillApiTest extends TestCase
         $this->assertSame('Terisi', Room::find($roomId)->status);
 
         $this->postJson("/api/bills/{$billId}/payments", [
-            'amountPaid' => 500000, 'method' => 'Tunai', 'date' => '2026-07-08',
+            'amountPaid' => 200000, 'method' => 'Tunai', 'date' => '2026-07-08',
+        ])
+            ->assertOk()
+            ->assertJsonFragment(['status' => 'Sebagian', 'paidAmount' => 200000]);
+
+        $this->assertSame('Sebagian', Bill::find($billId)->status);
+        $this->assertSame(200000, Bill::find($billId)->paidAmount);
+        $this->assertSame('Belum Bayar', Tenant::find($tenantId)->status);
+
+        $this->postJson("/api/bills/{$billId}/payments", [
+            'amountPaid' => 300000, 'method' => 'Tunai', 'date' => '2026-07-08',
         ])
             ->assertOk()
             ->assertJsonFragment(['status' => 'Lunas', 'paidAmount' => 500000]);
