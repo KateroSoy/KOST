@@ -33,19 +33,17 @@
 **Interfaces:**
 - Produces: a working `php` and `composer` CLI on PATH; a `backend/.env` configured for `DB_CONNECTION=mysql` against the shared remote database; a `kostos_migrations` tracking table (instead of Laravel's default `migrations`) so this app's migration bookkeeping never collides with the other Laravel app on the same database. All later tasks assume `php artisan migrate` and `php artisan test` work and hit the real remote MySQL.
 
-- [ ] **Step 1: Install PHP + Composer (manual, one-time)**
+- [ ] **Step 1: Verify PHP + Composer are available**
 
-This machine has no `php` CLI (verified: `php -v` → "command not found"). This step is manual — a GUI installer wizard can't be scripted reliably.
-
-1. Download Laragon (bundles PHP 8.2+, Composer, and a MySQL client — we won't use Laragon's own MySQL, we connect to the remote hPanel one) from `https://laragon.org/download/` and run the installer, accepting the defaults (installs to `C:\laragon`).
-2. After install, find the bundled PHP folder, e.g. `C:\laragon\bin\php\php-8.2.<x>`. Add that folder **and** `C:\laragon\bin\composer` to your user PATH (Windows Settings → "Edit environment variables for your account" → `Path` → New).
-3. Open a **new** terminal (PATH changes don't apply to already-open shells) and verify:
+PHP 8.2.32 (NTS, Win32 vs16 x64) was installed standalone into `C:\xampp\php` (already on PATH from a prior XAMPP PATH entry — no new PATH entries were needed), with `pdo_mysql`, `mysqli`, `mbstring`, `openssl`, `curl`, `zip`, `fileinfo` enabled in `php.ini`. Composer 2.8.9 was already present at `C:\ProgramData\ComposerSetup\bin`. Confirm both still resolve:
 
 Run: `php -v`
-Expected: prints `PHP 8.2.<x> (cli) ...` (any 8.2+ patch version)
+Expected: prints `PHP 8.2.32 (cli) ...`
 
 Run: `composer -V`
-Expected: prints `Composer version 2.<x>...`
+Expected: prints `Composer version 2.8.9 ...`
+
+If either command fails (e.g. a fresh machine with neither installed), install PHP 8.2+ standalone from `https://windows.php.net/download/` (NTS, x64 build) or via Laragon, then Composer from `https://getcomposer.org/Composer-Setup.exe`, and re-verify.
 
 - [ ] **Step 2: Point Laravel at the shared remote MySQL database**
 
