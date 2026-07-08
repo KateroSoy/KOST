@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\TenantController;
@@ -22,3 +23,8 @@ Route::delete('/tenants/{id}', [TenantController::class, 'destroy']);
 Route::get('/expenses', [ExpenseController::class, 'index']);
 Route::post('/expenses', [ExpenseController::class, 'store']);
 Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy']);
+
+Route::get('/complaints', [ComplaintController::class, 'index']);
+Route::post('/complaints', [ComplaintController::class, 'store']);
+Route::patch('/complaints/{id}', [ComplaintController::class, 'update']);
+Route::delete('/complaints/{id}', [ComplaintController::class, 'destroy']);
