@@ -346,7 +346,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('kostos_rooms');
+        // No-op: this migration never truly "owns" table creation on the
+        // shared remote DB (up() already skips creation when the table
+        // pre-exists), so rollback must never drop the real kostos_rooms
+        // table and its live data.
     }
 };
 ```
@@ -647,7 +650,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('kostos_tenants');
+        // No-op: this migration never truly "owns" table creation on the
+        // shared remote DB (up() already skips creation when the table
+        // pre-exists), so rollback must never drop the real kostos_tenants
+        // table and its live data.
     }
 };
 ```
@@ -823,7 +829,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('kostos_bills');
+        // No-op: this migration never truly "owns" table creation on the
+        // shared remote DB (up() already skips creation when the table
+        // pre-exists), so rollback must never drop the real kostos_bills
+        // table and its live data.
     }
 };
 ```
@@ -855,7 +864,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('kostos_settings');
+        // No-op: this migration never truly "owns" table creation on the
+        // shared remote DB (up() already skips creation when the table
+        // pre-exists), so rollback must never drop the real kostos_settings
+        // table and its live data.
     }
 };
 ```

@@ -106,7 +106,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('kostos_expenses');
+        // No-op: this migration never truly "owns" table creation on the
+        // shared remote DB (up() already skips creation when the table
+        // pre-exists), so rollback must never drop the real kostos_expenses
+        // table and its live data.
     }
 };
 ```
@@ -368,7 +371,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('kostos_complaints');
+        // No-op: this migration never truly "owns" table creation on the
+        // shared remote DB (up() already skips creation when the table
+        // pre-exists), so rollback must never drop the real kostos_complaints
+        // table and its live data.
     }
 };
 ```
