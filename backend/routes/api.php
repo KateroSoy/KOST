@@ -15,3 +15,5 @@ Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
 
 Route::get('/tenants', [TenantController::class, 'index']);
 Route::post('/tenants', [TenantController::class, 'store']);
+Route::post('/tenants/{id}/move-out', [TenantController::class, 'moveOut']);
+Route::delete('/tenants/{id}', [TenantController::class, 'destroy']);

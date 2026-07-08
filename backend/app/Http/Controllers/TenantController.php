@@ -67,4 +67,33 @@ class TenantController extends Controller
 
         return response()->json($tenant, 201);
     }
+
+    public function moveOut(string $id)
+    {
+        $tenant = Tenant::find($id);
+
+        if (! $tenant) {
+            return response()->json(['error' => 'Penghuni tidak ditemukan'], 404);
+        }
+
+        DB::transaction(function () use ($tenant) {
+            Bill::where('tenantId', $tenant->id)->where('status', '!=', 'Lunas')->delete();
+
+            Room::where('tenantId', $tenant->id)
+                ->orWhere('number', $tenant->roomAssigned)
+                ->orWhere('id', $tenant->roomAssigned)
+                ->update(['status' => 'Kosong', 'tenantId' => null]);
+
+            $tenant->delete();
+        });
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function destroy(string $id)
+    {
+        Tenant::destroy($id);
+
+        return response()->json(['ok' => true]);
+    }
 }
