@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BillController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\RoomController;
@@ -28,3 +29,8 @@ Route::get('/complaints', [ComplaintController::class, 'index']);
 Route::post('/complaints', [ComplaintController::class, 'store']);
 Route::patch('/complaints/{id}', [ComplaintController::class, 'update']);
 Route::delete('/complaints/{id}', [ComplaintController::class, 'destroy']);
+
+Route::get('/bills', [BillController::class, 'index']);
+Route::post('/bills', [BillController::class, 'store']);
+Route::post('/bills/{id}/payments', [BillController::class, 'payments']);
+Route::delete('/bills/{id}', [BillController::class, 'destroy']);
