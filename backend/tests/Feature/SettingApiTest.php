@@ -17,15 +17,18 @@ class SettingApiTest extends TestCase
         $updated = $original;
         $updated['reminderTemplate'] = 'smoke-template-'.time();
 
-        $this->putJson('/api/settings', $updated)
-            ->assertOk()
-            ->assertJsonFragment(['reminderTemplate' => $updated['reminderTemplate']]);
+        try {
+            $this->putJson('/api/settings', $updated)
+                ->assertOk()
+                ->assertJsonFragment(['reminderTemplate' => $updated['reminderTemplate']]);
 
-        $this->assertSame($updated['reminderTemplate'], Setting::find(1)->data['reminderTemplate']);
+            $this->assertSame($updated['reminderTemplate'], Setting::find(1)->data['reminderTemplate']);
+        } finally {
+            // restore the original reminderTemplate so this test doesn't leave
+            // real settings mutated, even if an assertion above failed
+            $this->putJson('/api/settings', $original);
+        }
 
-        // restore the original reminderTemplate so this test doesn't leave
-        // real settings mutated
-        $this->putJson('/api/settings', $original);
         $this->assertSame($original['reminderTemplate'], Setting::find(1)->data['reminderTemplate']);
     }
 }
