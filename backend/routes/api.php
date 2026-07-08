@@ -4,6 +4,7 @@ use App\Http\Controllers\BillController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\RoomController;
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\TenantController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,3 +35,6 @@ Route::get('/bills', [BillController::class, 'index']);
 Route::post('/bills', [BillController::class, 'store']);
 Route::post('/bills/{id}/payments', [BillController::class, 'payments']);
 Route::delete('/bills/{id}', [BillController::class, 'destroy']);
+
+Route::get('/settings', [SettingController::class, 'index']);
+Route::put('/settings', [SettingController::class, 'update']);
