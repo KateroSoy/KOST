@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\TenantController;
 use Illuminate\Support\Facades\Route;
@@ -17,3 +18,7 @@ Route::get('/tenants', [TenantController::class, 'index']);
 Route::post('/tenants', [TenantController::class, 'store']);
 Route::post('/tenants/{id}/move-out', [TenantController::class, 'moveOut']);
 Route::delete('/tenants/{id}', [TenantController::class, 'destroy']);
+
+Route::get('/expenses', [ExpenseController::class, 'index']);
+Route::post('/expenses', [ExpenseController::class, 'store']);
+Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy']);
