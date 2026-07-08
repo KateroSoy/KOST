@@ -10,7 +10,7 @@ import {
 
 // Helper function with timeout
 const fetchWithTimeout = async (resource: string, options: RequestInit = {}) => {
-  const timeout = 2500; // 2.5 seconds timeout
+  const timeout = 8000; // 8 seconds timeout (php artisan serve on Windows can't fork workers, so concurrent requests serialize)
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   
