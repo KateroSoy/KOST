@@ -15,7 +15,7 @@ class RestoreController extends Controller
 {
     public function store(Request $request)
     {
-        if (! $request->has('kostSettings')) {
+        if (! $request->has('kostSettings') || $request->input('kostSettings') === null) {
             return response()->json(['error' => 'kostSettings wajib ada'], 400);
         }
 

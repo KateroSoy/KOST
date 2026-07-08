@@ -72,4 +72,11 @@ class RestoreApiTest extends TestCase
             ->assertStatus(400)
             ->assertJson(['error' => 'kostSettings wajib ada']);
     }
+
+    public function test_restore_rejects_explicit_null_kost_settings(): void
+    {
+        $this->postJson('/api/restore', ['kostSettings' => null, 'rooms' => []])
+            ->assertStatus(400)
+            ->assertJson(['error' => 'kostSettings wajib ada']);
+    }
 }
