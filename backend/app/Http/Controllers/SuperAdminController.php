@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SuperAdminController extends Controller
 {
@@ -67,18 +68,31 @@ class SuperAdminController extends Controller
             ->get();
 
         $result = $users->map(function ($u) {
-            $setting = Setting::where('user_id', $u->id)->first();
-            $settingData = $setting ? json_decode($setting->data, true) : [];
+            $settingData = [];
+            try {
+                $setting = Setting::where('user_id', $u->id)->first();
+                $settingData = $setting ? json_decode($setting->data, true) : [];
+            } catch (\Throwable $e) {}
 
-            $roomCount = Room::where('user_id', $u->id)->count();
-            $tenantCount = Tenant::where('user_id', $u->id)->count();
-            $propertyCount = Property::where('user_id', $u->id)->count();
+            $roomCount = 0;
+            try { $roomCount = Room::where('user_id', $u->id)->count(); } catch (\Throwable $e) {}
+
+            $tenantCount = 0;
+            try { $tenantCount = Tenant::where('user_id', $u->id)->count(); } catch (\Throwable $e) {}
+
+            $propertyCount = 1;
+            try {
+                if (Schema::hasTable('kostos_properties')) {
+                    $cnt = Property::where('user_id', $u->id)->count();
+                    $propertyCount = $cnt > 0 ? $cnt : 1;
+                }
+            } catch (\Throwable $e) {}
 
             return [
                 'id'            => $u->id,
                 'name'          => $u->name,
                 'phone'         => $u->phone,
-                'slug'          => $u->slug,
+                'slug'          => $u->slug ?? ('owner-' . $u->id),
                 'email'         => $u->email,
                 'role'          => $u->role ?? 'owner',
                 'status'        => $u->status ?? 'active',
@@ -168,7 +182,9 @@ class SuperAdminController extends Controller
             Expense::where('user_id', $userId)->delete();
             Tenant::where('user_id', $userId)->delete();
             Room::where('user_id', $userId)->delete();
-            Property::where('user_id', $userId)->delete();
+            if (Schema::hasTable('kostos_properties')) {
+                Property::where('user_id', $userId)->delete();
+            }
             Setting::where('user_id', $userId)->delete();
 
             $user->tokens()->delete();
