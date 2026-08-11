@@ -7,21 +7,31 @@ use Illuminate\Http\Request;
 
 class RoomController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Room::orderBy('seq')->get();
+        return Room::where('user_id', $request->user()->id)
+            ->orderBy('seq')
+            ->get();
     }
 
     public function store(Request $request)
     {
-        $room = Room::updateOrCreate(['id' => $request->input('id')], $request->all());
+        $data = $request->all();
+        $data['user_id'] = $request->user()->id;
+
+        $room = Room::updateOrCreate(
+            ['id' => $data['id'], 'user_id' => $data['user_id']],
+            $data
+        );
 
         return response()->json($room, 201);
     }
 
     public function update(Request $request, string $id)
     {
-        $room = Room::find($id);
+        $room = Room::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->first();
 
         if (! $room) {
             return response()->json(['error' => 'Kamar tidak ditemukan'], 404);
@@ -33,9 +43,19 @@ class RoomController extends Controller
         return response()->json($room);
     }
 
-    public function destroy(string $id)
+    /**
+     * Full room update (PUT) — alias to update for complete record edits.
+     */
+    public function replace(Request $request, string $id)
     {
-        Room::destroy($id);
+        return $this->update($request, $id);
+    }
+
+    public function destroy(Request $request, string $id)
+    {
+        Room::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->delete();
 
         return response()->json(['ok' => true]);
     }

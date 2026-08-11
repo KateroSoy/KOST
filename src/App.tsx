@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Room, Tenant, Bill, Expense, Complaint, KostSettings, ComplaintStatus, RoomStatus, TenantStatus } from './types';
+import { Room, Tenant, Bill, Expense, Complaint, KostSettings, Property, ComplaintStatus, RoomStatus, TenantStatus, HousekeepingStatus } from './types';
 import { 
   INITIAL_SETTINGS, 
   INITIAL_ROOMS, 
   INITIAL_TENANTS, 
   INITIAL_BILLS, 
   INITIAL_EXPENSES, 
-  INITIAL_COMPLAINTS 
+  INITIAL_COMPLAINTS,
+  INITIAL_PROPERTIES 
 } from './data';
-import { fetchAllData, syncToBackend } from './api';
+import { fetchAllData, syncToBackend, getToken, clearToken, authLogout, fetchPublicOwnerData, PublicOwnerData } from './api';
 
 // Import All Views
 import { LandingPage } from './components/LandingPage';
@@ -30,6 +31,29 @@ export default function App() {
   
   // Authorization State: 'landing' | 'login' | 'register' | 'onboarding' | 'dashboard'
   const [authMode, setAuthMode] = useState<'landing' | 'login' | 'register' | 'onboarding' | 'dashboard'>('landing');
+
+  // Demo Mode: true when user clicks "Try Demo" without registering
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
+
+  // Multi-Property Account States
+  const [properties, setProperties] = useState<Property[]>(() => {
+    try {
+      const raw = localStorage.getItem('kostos_properties');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return INITIAL_PROPERTIES;
+  });
+
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const propParam = urlParams.get('property');
+      if (propParam) return propParam;
+      return localStorage.getItem('kostos_selected_property') || 'all';
+    } catch {
+      return 'all';
+    }
+  });
 
   // Database core States
   const [kostSettings, setKostSettings] = useState<KostSettings>(INITIAL_SETTINGS);
@@ -58,12 +82,30 @@ export default function App() {
   const [billForPayment, setBillForPayment] = useState<Bill | null>(null);
   const [billForReminder, setBillForReminder] = useState<Bill | null>(null);
 
+  const [publicOwnerData, setPublicOwnerData] = useState<PublicOwnerData | null>(null);
+
   // 1. INITIALIZE DATABASE FROM HYBRID API (Backend first, fallback LocalStorage)
   useEffect(() => {
-    try {
-      const loggedIn = localStorage.getItem('kostos_logged_in');
-      if (loggedIn === 'true') setAuthMode('dashboard');
-    } catch { /* ignore */ }
+    // Check if viewing a specific owner landing page via URL
+    const ownerSlug = new URLSearchParams(window.location.search).get('owner');
+    if (ownerSlug) {
+      fetchPublicOwnerData(ownerSlug).then((res) => {
+        if (res) {
+          setPublicOwnerData(res);
+          if (res.settings) {
+            setKostSettings((prev) => ({ ...prev, ...res.settings }));
+          }
+          if (res.rooms && res.rooms.length > 0) {
+            setRooms(res.rooms);
+          }
+        }
+      });
+    }
+
+    // Token-based auto-login
+    if (getToken()) {
+      setAuthMode('dashboard');
+    }
 
     fetchAllData().then((data) => {
       setKostSettings(data.settings);
@@ -72,10 +114,21 @@ export default function App() {
       setBills(data.bills);
       setExpenses(data.expenses);
       setComplaints(data.complaints);
+      if (data.properties && data.properties.length > 0) {
+        setProperties(data.properties);
+      }
     });
   }, []);
 
   // 2. SYNCHRONIZE STATE TO LOCALSTORAGE
+  useEffect(() => {
+    localStorage.setItem('kostos_properties', JSON.stringify(properties));
+  }, [properties]);
+
+  useEffect(() => {
+    localStorage.setItem('kostos_selected_property', selectedPropertyId);
+  }, [selectedPropertyId]);
+
   useEffect(() => {
     localStorage.setItem('kostos_rooms', JSON.stringify(rooms));
   }, [rooms]);
@@ -100,6 +153,35 @@ export default function App() {
     localStorage.setItem('kostos_settings', JSON.stringify(kostSettings));
   }, [kostSettings]);
 
+  // Scoped Filters based on selected property
+  const currentPropertyScopeId = selectedPropertyId !== 'all' ? selectedPropertyId : (properties[0]?.id || 'prop-1');
+
+  const filteredRooms = selectedPropertyId === 'all' ? rooms : rooms.filter(r => !r.propertyId || r.propertyId === selectedPropertyId);
+  const filteredTenants = selectedPropertyId === 'all' ? tenants : tenants.filter(t => !t.propertyId || t.propertyId === selectedPropertyId);
+  const filteredBills = selectedPropertyId === 'all' ? bills : bills.filter(b => !b.propertyId || b.propertyId === selectedPropertyId);
+  const filteredExpenses = selectedPropertyId === 'all' ? expenses : expenses.filter(e => !e.propertyId || e.propertyId === selectedPropertyId);
+  const filteredComplaints = selectedPropertyId === 'all' ? complaints : complaints.filter(c => !c.propertyId || c.propertyId === selectedPropertyId);
+
+  // PROPERTY MUTATORS
+  const handleAddProperty = (newProp: Property) => {
+    const updated = [...properties, newProp];
+    setProperties(updated);
+    setSelectedPropertyId(newProp.id);
+    syncToBackend('properties', 'POST', newProp);
+  };
+
+  const handleUpdateProperty = (updatedProp: Property) => {
+    const updated = properties.map(p => p.id === updatedProp.id ? updatedProp : p);
+    setProperties(updated);
+    syncToBackend(`properties/${updatedProp.id}`, 'PUT', updatedProp);
+  };
+
+  const handleDeleteProperty = (id: string) => {
+    const updated = properties.filter(p => p.id !== id);
+    setProperties(updated);
+    if (selectedPropertyId === id) setSelectedPropertyId('all');
+    syncToBackend(`properties/${id}`, 'DELETE');
+  };
 
   // 3. CORE STATE MUTATORS (Optimistic UI + API Sync)
   const handleUpdateSettings = (newSettings: KostSettings) => {
@@ -108,9 +190,10 @@ export default function App() {
   };
 
   const handleAddRoom = (newRoom: Room) => {
-    const updated = [...rooms, newRoom];
+    const roomWithProp = { ...newRoom, propertyId: newRoom.propertyId || currentPropertyScopeId };
+    const updated = [...rooms, roomWithProp];
     setRooms(updated);
-    syncToBackend('rooms', 'POST', newRoom);
+    syncToBackend('rooms', 'POST', roomWithProp);
   };
 
   const handleUpdateRoomStatus = (roomId: string, nextStatus: RoomStatus) => {
@@ -128,63 +211,115 @@ export default function App() {
     // 1. Add tenant
     setTenants(prev => [...prev, newTenant]);
 
-    // 2. Update Room: mark 'Terisi' and assign tenantId
+    // 2. Update Room: mark 'Terisi', assign tenantId, mark housekeeping Bersih
     setRooms(prev => prev.map(r => 
-      r.id === assignedRoomId ? { ...r, status: 'Terisi' as RoomStatus, tenantId: newTenant.id } : r
+      r.id === assignedRoomId ? { ...r, status: 'Terisi' as RoomStatus, tenantId: newTenant.id, housekeepingStatus: 'Bersih' as HousekeepingStatus } : r
     ));
 
-    // 3. Create initial bill for new tenant with correct due date
+    // 3. Create initial bill based on stay type
     const activeRoom = rooms.find(r => r.id === assignedRoomId);
     const roomNo = activeRoom ? activeRoom.number : newTenant.roomAssigned;
-    const defaultRentAmount = activeRoom ? activeRoom.price : newTenant.rentAmount;
 
-    // Compute due date from selectedMonth + kostSettings.defaultDueDateDay
-    const computeDueDate = () => {
-      const MONTHS: Record<string,string> = {
-        'Januari': '01', 'Februari': '02', 'Maret': '03', 'April': '04',
-        'Mei': '05', 'Juni': '06', 'Juli': '07', 'Agustus': '08',
-        'September': '09', 'Oktober': '10', 'November': '11', 'Desember': '12'
+    const isHarian = newTenant.guestType === 'Harian';
+
+    let autoInceptionBill: Bill;
+
+    if (isHarian) {
+      // Daily billing: pricePerDay × nights, dueDate = checkOutDate
+      const checkIn  = newTenant.checkInDate  || new Date().toISOString().split('T')[0];
+      const checkOut = newTenant.checkOutDate || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+      const diffMs   = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+      const diffDays = Math.max(1, Math.ceil(diffMs / 86400000));
+      const pricePerDay = activeRoom?.pricePerDay || (activeRoom ? Math.round(activeRoom.price / 30) : newTenant.rentAmount);
+      const rentAmount  = pricePerDay * diffDays;
+
+      const fmt = (d: string) => {
+        const dt = new Date(d);
+        return `${dt.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'][dt.getMonth()]} ${dt.getFullYear()}`;
       };
-      const parts = selectedMonth.split(' ');
-      const monthNum = MONTHS[parts[0]] || '06';
-      const year = parts[1] || String(new Date().getFullYear());
-      const day = String(kostSettings.defaultDueDateDay || 5).padStart(2, '0');
-      return `${year}-${monthNum}-${day}`;
-    };
 
-    const autoInceptionBill: Bill = {
-      id: `bill-auto-${Date.now()}`,
-      tenantId: newTenant.id,
-      tenantName: newTenant.name,
-      roomId: assignedRoomId,
-      roomNumber: roomNo,
-      period: selectedMonth,
-      dueDate: computeDueDate(),
-      rentAmount: defaultRentAmount,
-      electricityCharge: 0,
-      waterCharge: 0,
-      additionalFee: 0,
-      discount: 0,
-      lateFee: 0,
-      totalAmount: defaultRentAmount,
-      paidAmount: 0,
-      status: 'Belum Bayar'
-    };
+      autoInceptionBill = {
+        id: `bill-harian-${Date.now()}`,
+        tenantId: newTenant.id,
+        tenantName: newTenant.name,
+        roomId: assignedRoomId,
+        roomNumber: roomNo,
+        rentalType: 'Harian',
+        stayDuration: diffDays,
+        checkInDate: checkIn,
+        checkOutDate: checkOut,
+        period: `${fmt(checkIn)} – ${fmt(checkOut)}`,
+        dueDate: checkOut,
+        rentAmount,
+        electricityCharge: 0,
+        waterCharge: 0,
+        additionalFee: 0,
+        discount: 0,
+        lateFee: 0,
+        totalAmount: rentAmount,
+        paidAmount: 0,
+        status: 'Belum Bayar'
+      };
+    } else {
+      // Monthly billing: pricePerMonth or price, dueDate from settings
+      const monthlyRate = activeRoom?.pricePerMonth || activeRoom?.price || newTenant.rentAmount;
+      const computeDueDate = () => {
+        const MONTHS: Record<string,string> = {
+          'Januari': '01', 'Februari': '02', 'Maret': '03', 'April': '04',
+          'Mei': '05', 'Juni': '06', 'Juli': '07', 'Agustus': '08',
+          'September': '09', 'Oktober': '10', 'November': '11', 'Desember': '12'
+        };
+        const parts = selectedMonth.split(' ');
+        const monthNum = MONTHS[parts[0]] || '06';
+        const year = parts[1] || String(new Date().getFullYear());
+        const day = String(kostSettings.defaultDueDateDay || 5).padStart(2, '0');
+        return `${year}-${monthNum}-${day}`;
+      };
+
+      autoInceptionBill = {
+        id: `bill-auto-${Date.now()}`,
+        tenantId: newTenant.id,
+        tenantName: newTenant.name,
+        roomId: assignedRoomId,
+        roomNumber: roomNo,
+        rentalType: 'Bulanan',
+        stayDuration: 1,
+        period: selectedMonth,
+        dueDate: computeDueDate(),
+        rentAmount: monthlyRate,
+        electricityCharge: 0,
+        waterCharge: 0,
+        additionalFee: 0,
+        discount: 0,
+        lateFee: 0,
+        totalAmount: monthlyRate,
+        paidAmount: 0,
+        status: 'Belum Bayar'
+      };
+    }
 
     setBills(prev => [autoInceptionBill, ...prev]);
     
-    // Sync to backend (Tenant auto-creates bill in backend too, so we just send tenant)
+    // Sync tenant to backend — the Laravel backend also creates the bill automatically
+    // so we only send the tenant object (no separate bill POST)
     syncToBackend('tenants', 'POST', newTenant);
   };
 
   const handleMoveOutTenant = (tenantId: string, roomNumber: string) => {
     setTenants(prev => prev.filter(t => t.id !== tenantId));
     setRooms(prev => prev.map(r => 
-      r.number === roomNumber ? { ...r, status: 'Kosong' as RoomStatus, tenantId: undefined } : r
+      r.number === roomNumber ? { ...r, status: 'Kosong' as RoomStatus, housekeepingStatus: 'Kotor' as HousekeepingStatus, tenantId: undefined } : r
     ));
     setBills(prev => prev.filter(b => !(b.tenantId === tenantId && b.status !== 'Lunas')));
     
     syncToBackend(`tenants/${tenantId}/move-out`, 'POST');
+  };
+
+  const handleUpdateHousekeepingStatus = (roomId: string, hkStatus: HousekeepingStatus) => {
+    setRooms(prev => prev.map(r => 
+      r.id === roomId ? { ...r, housekeepingStatus: hkStatus } : r
+    ));
+    syncToBackend(`rooms/${roomId}`, 'PATCH', { housekeepingStatus: hkStatus });
   };
 
   const handleDeleteTenant = (id: string) => {
@@ -339,8 +474,18 @@ export default function App() {
     setAuthMode('dashboard');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('kostos_logged_in');
+  const handleLogout = async () => {
+    await authLogout(); // calls API only (no token clearing)
+    clearToken();       // clear token + all local storage (called exactly once)
+    setKostSettings(INITIAL_SETTINGS);
+    setRooms([]);
+    setTenants([]);
+    setBills([]);
+    setExpenses([]);
+    setComplaints([]);
+    setProperties(INITIAL_PROPERTIES);
+    setPublicOwnerData(null);
+    setIsDemoMode(false);
     setAuthMode('landing');
   };
 
@@ -365,7 +510,7 @@ export default function App() {
   // 6. BACKUP DATABASE AND RESTORE JSON FLOWS
   const handleExportBackup = () => {
     const databaseState = {
-      version: "Kostos-v1-2026",
+      version: "StayFlow-v1-2026",
       timestamp: new Date().toISOString(),
       kostSettings,
       rooms,
@@ -379,7 +524,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `kostos_db_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `stayflow_db_backup_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -410,7 +555,7 @@ export default function App() {
             expenses: backupData.expenses || [],
             complaints: backupData.complaints || []
           });
-          setBackupMsg({ type: 'success', text: '✓ Database KOSTOS sukses dipulihkan dari file backup!' });
+          setBackupMsg({ type: 'success', text: '✓ Database StayFlow sukses dipulihkan dari file backup!' });
           setTimeout(() => setBackupMsg(null), 4000);
         } else {
           setBackupMsg({ type: 'error', text: '⚠️ Format file JSON backup belum valid.' });
@@ -431,11 +576,11 @@ export default function App() {
       case 'dashboard':
         return (
           <DashboardView 
-            rooms={rooms} 
-            tenants={tenants} 
-            bills={bills} 
-            expenses={expenses} 
-            complaints={complaints}
+            rooms={filteredRooms} 
+            tenants={filteredTenants} 
+            bills={filteredBills} 
+            expenses={filteredExpenses} 
+            complaints={filteredComplaints}
             settings={kostSettings}
             selectedMonth={selectedMonth}
             onNavigateToTab={(tab, arg) => {
@@ -455,13 +600,14 @@ export default function App() {
       case 'rooms':
         return (
           <RoomsView 
-            rooms={rooms} 
-            tenants={tenants} 
-            bills={bills}
+            rooms={filteredRooms} 
+            tenants={filteredTenants} 
+            bills={filteredBills}
             selectedRoomId={selectedRoomId}
             onSelectRoomId={setSelectedRoomId}
             onAddRoom={handleAddRoom}
             onUpdateRoomStatus={handleUpdateRoomStatus}
+            onUpdateHousekeepingStatus={handleUpdateHousekeepingStatus}
             onDeleteRoom={handleDeleteRoom}
             onNavigateToTab={(tab, arg) => {
               setSelectedTab(tab);
@@ -473,8 +619,8 @@ export default function App() {
       case 'tenants':
         return (
           <TenantsView
-            tenants={tenants}
-            rooms={rooms}
+            tenants={filteredTenants}
+            rooms={filteredRooms}
             selectedTenantId={selectedTenantId}
             onSelectTenantId={setSelectedTenantId}
             onAddTenant={handleAddTenant}
@@ -490,9 +636,9 @@ export default function App() {
       case 'bills':
         return (
           <BillsView
-            bills={bills}
-            tenants={tenants}
-            rooms={rooms}
+            bills={filteredBills}
+            tenants={filteredTenants}
+            rooms={filteredRooms}
             selectedBillId={selectedBillId}
             onSelectBillId={setSelectedBillId}
             onAddBill={handleAddBill}
@@ -509,9 +655,9 @@ export default function App() {
       case 'payments':
         return (
           <PaymentsView
-            bills={bills}
-            tenants={tenants}
-            rooms={rooms}
+            bills={filteredBills}
+            tenants={filteredTenants}
+            rooms={filteredRooms}
             selectedBillForPayment={billForPayment}
             onClosePaymentForm={() => {
               setBillForPayment(null);
@@ -524,7 +670,7 @@ export default function App() {
       case 'expenses':
         return (
           <ExpensesView
-            expenses={expenses}
+            expenses={filteredExpenses}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
             selectedMonth={selectedMonth}
@@ -534,9 +680,9 @@ export default function App() {
       case 'complaints':
         return (
           <ComplaintsView
-            complaints={complaints}
-            tenants={tenants}
-            rooms={rooms}
+            complaints={filteredComplaints}
+            tenants={filteredTenants}
+            rooms={filteredRooms}
             selectedComplaintId={selectedComplaintId}
             onSelectComplaintId={setSelectedComplaintId}
             onAddComplaint={handleAddComplaint}
@@ -548,10 +694,10 @@ export default function App() {
       case 'reports':
         return (
           <ReportsView
-            bills={bills}
-            rooms={rooms}
-            tenants={tenants}
-            expenses={expenses}
+            bills={filteredBills}
+            rooms={filteredRooms}
+            tenants={filteredTenants}
+            expenses={filteredExpenses}
             selectedMonth={selectedMonth}
           />
         );
@@ -563,6 +709,14 @@ export default function App() {
             onUpdateSettings={handleUpdateSettings}
             onExportBackup={handleExportBackup}
             onImportBackup={handleImportBackup}
+            properties={properties}
+            onAddProperty={handleAddProperty}
+            onUpdateProperty={handleUpdateProperty}
+            onDeleteProperty={handleDeleteProperty}
+            onPreviewPropertyLanding={(id) => {
+              setSelectedPropertyId(id);
+              setAuthMode('landing');
+            }}
           />
         );
 
@@ -575,8 +729,16 @@ export default function App() {
   if (authMode === 'landing') {
     return (
       <LandingPage 
+        rooms={rooms}
+        settings={kostSettings}
+        properties={properties}
+        selectedPropertyId={selectedPropertyId}
+        isOwnerCatalog={new URLSearchParams(window.location.search).has('owner')}
+        onSelectPropertyId={(id) => setSelectedPropertyId(id)}
         onStartDemo={() => {
+          // Demo mode: data stays in localStorage only, not synced to any account
           localStorage.setItem('kostos_logged_in', 'true');
+          setIsDemoMode(true);
           setAuthMode('dashboard');
         }}
         onGoToLogin={() => setAuthMode('login')} 
@@ -602,7 +764,22 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row antialiased font-sans text-slate-800">
+    <div className="min-h-screen bg-slate-50 flex flex-col antialiased font-sans text-slate-800">
+
+      {/* DEMO MODE BANNER — shown when user is in local-only demo, not registered */}
+      {isDemoMode && (
+        <div className="w-full bg-amber-500 text-amber-950 text-xs font-bold py-2 px-4 flex items-center justify-between z-50 flex-shrink-0">
+          <span>⚠️ Mode Demo Aktif — Data hanya tersimpan di perangkat ini dan akan hilang jika browser dibersihkan.</span>
+          <button
+            onClick={() => setAuthMode('register')}
+            className="ml-4 bg-amber-950 text-amber-100 px-3 py-1 rounded-lg text-[10px] font-extrabold hover:bg-amber-900 transition-colors cursor-pointer whitespace-nowrap"
+          >
+            Daftar Gratis & Simpan Data →
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0">
       
       {/* 1. COMPREHENSIVE SIDEBAR FOR TABLET & DESKTOP SCREEN */}
       <SidebarAndNav 
@@ -621,6 +798,9 @@ export default function App() {
         onLogout={handleLogout}
         kostName={kostSettings.kostName}
         ownerName={kostSettings.ownerName}
+        properties={properties}
+        selectedPropertyId={selectedPropertyId}
+        onViewGuestPortal={() => setAuthMode('landing')}
       />
 
       {/* 2. MAIN WORKING CANVAS WRAPPER */}
@@ -632,6 +812,11 @@ export default function App() {
           selectedMonth={selectedMonth}
           onChangeMonth={setSelectedMonth}
           onLogout={handleLogout}
+          properties={properties}
+          selectedPropertyId={selectedPropertyId}
+          onSelectPropertyId={(id) => setSelectedPropertyId(id)}
+          onAddPropertyClick={() => setSelectedTab('settings')}
+          onViewGuestPortal={() => setAuthMode('landing')}
         />
 
         {/* Core Tab Canvas Render Frame */}
@@ -641,6 +826,8 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      </div>{/* end inner flex row */}
 
       {/* 3. FLOATING WHATSAPP BROADCAST MAKER MODAL WINDOW */}
       {billForReminder && (
@@ -664,3 +851,4 @@ export default function App() {
     </div>
   );
 }
+

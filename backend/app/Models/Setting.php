@@ -10,22 +10,37 @@ class Setting extends Model
 
     protected $primaryKey = 'id';
 
-    public $incrementing = false;
+    public $incrementing = true;
 
     protected $keyType = 'int';
 
     public $timestamps = false;
 
-    protected $fillable = ['id', 'data'];
+    protected $fillable = ['user_id', 'data'];
 
     protected $casts = [
         'data' => 'array',
     ];
 
-    public static function defaultDueDateDay(): int
+    /**
+     * Get the default due date day for a given user (or fallback to global row 1).
+     */
+    public static function defaultDueDateDay(?int $userId = null): int
     {
-        $settings = static::find(1);
+        if ($userId) {
+            $settings = static::where('user_id', $userId)->first();
+        } else {
+            $settings = static::first();
+        }
 
         return (int) ($settings?->data['defaultDueDateDay'] ?? 5);
+    }
+
+    /**
+     * Get the full settings data for a given user.
+     */
+    public static function forUser(int $userId): ?array
+    {
+        return static::where('user_id', $userId)->first()?->data;
     }
 }

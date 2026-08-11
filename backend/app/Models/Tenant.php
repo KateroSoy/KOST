@@ -17,12 +17,19 @@ class Tenant extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id', 'name', 'phone', 'email', 'emergencyContact', 'idNumber',
-        'roomAssigned', 'moveInDate', 'rentAmount', 'deposit', 'status',
+        'id', 'user_id', 'name', 'phone', 'email',
+        'guestType', 'checkInDate', 'checkOutDate',
+        'idType', 'vehicleNumber', 'totalGuests', 'bookingOrigin',
+        'emergencyContact', 'idNumber',
+        'roomAssigned', 'moveInDate',
+        'rentAmount', 'deposit', 'status',
         'notes', 'idPhotoUrl',
     ];
 
     protected $casts = [
         'emergencyContact' => 'array',
+        'rentAmount'       => 'integer',
+        'deposit'          => 'integer',
+        'totalGuests'      => 'integer',
     ];
 }

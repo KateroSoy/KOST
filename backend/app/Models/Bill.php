@@ -17,9 +17,24 @@ class Bill extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id', 'tenantId', 'tenantName', 'roomId', 'roomNumber', 'period',
-        'dueDate', 'rentAmount', 'electricityCharge', 'waterCharge',
-        'additionalFee', 'discount', 'lateFee', 'totalAmount', 'paidAmount',
-        'status', 'paymentMethod', 'paymentDate', 'notes',
+        'id', 'user_id', 'tenantId', 'tenantName', 'roomId', 'roomNumber',
+        'rentalType', 'stayDuration', 'checkInDate', 'checkOutDate',
+        'period', 'dueDate',
+        'rentAmount', 'electricityCharge', 'waterCharge',
+        'additionalFee', 'discount', 'lateFee',
+        'totalAmount', 'paidAmount', 'status',
+        'paymentMethod', 'paymentDate', 'notes',
+    ];
+
+    protected $casts = [
+        'rentAmount'       => 'integer',
+        'electricityCharge'=> 'integer',
+        'waterCharge'      => 'integer',
+        'additionalFee'    => 'integer',
+        'discount'         => 'integer',
+        'lateFee'          => 'integer',
+        'totalAmount'      => 'integer',
+        'paidAmount'       => 'integer',
+        'stayDuration'     => 'integer',
     ];
 }

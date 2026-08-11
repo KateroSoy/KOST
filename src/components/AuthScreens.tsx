@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Home, ArrowLeft, ArrowRight, User, Key, Building2, Phone, MapPin, DollarSign, Plus, Trash } from 'lucide-react';
 import { KostSettings, Room, Tenant, BankAccount } from '../types';
+import { authLogin, authRegister, setToken } from '../api';
 
 interface AuthScreensProps {
   viewMode: 'login' | 'register' | 'onboarding';
@@ -14,6 +15,7 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
 
   // Register states
   const [regName, setRegName] = useState('');
@@ -21,6 +23,7 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regError, setRegError] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
 
   // Onboarding states
   const [obStep, setObStep] = useState(1);
@@ -28,11 +31,11 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
   const [obOwnerName, setObOwnerName] = useState('Ibu Indah Lestari');
   const [obAddress, setObAddress] = useState('Jl. Dago Asri No. 42, Coblong, Bandung');
   const [obWhatsapp, setObWhatsapp] = useState('081234567890');
-  
+
   const [obRoomCount, setObRoomCount] = useState(8);
   const [obBasePrice, setObBasePrice] = useState(1200000);
   const [obDefaultDueDateDay, setObDefaultDueDateDay] = useState(5);
-  
+
   const [obBankName, setObBankName] = useState('BCA');
   const [obAccHolder, setObAccHolder] = useState('INDAH LESTARI');
   const [obAccNo, setObAccNo] = useState('2330998877');
@@ -57,17 +60,29 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
     setObBankList(obBankList.filter(b => b.id !== id));
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginPhone || !loginPassword) {
       setLoginError('Nomor WhatsApp dan kata sandi wajib diisi!');
       return;
     }
-    // Simple bypass
-    onSetViewMode('dashboard');
+    setLoginError('');
+    setLoginLoading(true);
+    try {
+      const result = await authLogin({ phone: loginPhone, password: loginPassword });
+      setToken(result.token);
+      if (result.user?.slug) {
+        localStorage.setItem('kostos_owner_slug', result.user.slug);
+      }
+      onSetViewMode('dashboard');
+    } catch (err: any) {
+      setLoginError(err.message || 'Nomor atau kata sandi salah!');
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regName || !regKostName || !regPhone || !regPassword) {
       setRegError('Semua kolom wajib diisi untuk mendaftarkan kos!');
@@ -77,11 +92,29 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
       setRegError('Nomor WhatsApp belum valid (minimal 9 karakter)');
       return;
     }
-    setObOwnerName(regName);
-    setObKostName(regKostName);
-    setObWhatsapp(regPhone);
     setRegError('');
-    onSetViewMode('onboarding');
+    setRegLoading(true);
+    try {
+      const result = await authRegister({
+        name: regName,
+        phone: regPhone,
+        password: regPassword,
+        kostName: regKostName,
+      });
+      setToken(result.token);
+      if (result.user?.slug) {
+        localStorage.setItem('kostos_owner_slug', result.user.slug);
+      }
+      // Pre-fill onboarding with register data then go to onboarding for extra config
+      setObOwnerName(regName);
+      setObKostName(regKostName);
+      setObWhatsapp(regPhone);
+      onSetViewMode('onboarding');
+    } catch (err: any) {
+      setRegError(err.message || 'Registrasi gagal. Coba lagi.');
+    } finally {
+      setRegLoading(false);
+    }
   };
 
   const handleOnboardingFinish = () => {
@@ -93,23 +126,23 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
       bankAccounts: obBankList,
       defaultDueDateDay: obDefaultDueDateDay,
     }, obRoomCount, obBasePrice);
-    
+
     onSetViewMode('dashboard');
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 font-sans">
       <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden flex flex-col">
-        
+
         {/* Header Branding */}
         <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-teal-500 flex items-center justify-center">
               <Home className="h-4 w-4 text-slate-900" />
             </div>
-            <span className="font-extrabold text-lg tracking-tight">Kostos</span>
+            <span className="font-extrabold text-lg tracking-tight">StayFlow</span>
           </div>
-          <button 
+          <button
             onClick={onGoBackLanding}
             className="text-xs text-slate-300 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
           >
@@ -168,20 +201,23 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
               <button
                 type="submit"
                 id="btn-login-submit"
-                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm shadow-teal-600/10 transition-all cursor-pointer mt-2"
+                disabled={loginLoading}
+                className="w-full py-3 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-sm shadow-teal-600/10 transition-all cursor-pointer mt-2 flex items-center justify-center gap-2"
               >
-                Masuk ke Aplikasi
+                {loginLoading ? (
+                  <><span className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block"></span> Memeriksa...</>
+                ) : 'Masuk ke Aplikasi'}
               </button>
             </form>
 
             <div className="mt-6 pt-6 border-t border-slate-100 text-center">
               <p className="text-xs text-slate-500">
                 Belum mendaftarkan kost Anda?{' '}
-                <button 
-                  onClick={() => onSetViewMode('register')} 
+                <button
+                  onClick={() => onSetViewMode('register')}
                   className="text-teal-600 font-extrabold hover:underline"
                 >
-                  Daftar Kost Baru
+                  Daftar Penginapan Baru
                 </button>
               </p>
             </div>
@@ -269,17 +305,20 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
               <button
                 type="submit"
                 id="btn-register-submit"
-                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm shadow-teal-600/10 transition-all cursor-pointer mt-2"
+                disabled={regLoading}
+                className="w-full py-3 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-sm shadow-teal-600/10 transition-all cursor-pointer mt-2 flex items-center justify-center gap-2"
               >
-                Daftar & Konfigurasi Kost
+                {regLoading ? (
+                  <><span className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block"></span> Mendaftarkan Kost...</>
+                ) : 'Daftar & Konfigurasi Kost'}
               </button>
             </form>
 
             <div className="mt-6 pt-6 border-t border-slate-100 text-center">
               <p className="text-xs text-slate-500">
                 Sudah punya akun?{' '}
-                <button 
-                  onClick={() => onSetViewMode('login')} 
+                <button
+                  onClick={() => onSetViewMode('login')}
                   className="text-teal-600 font-extrabold hover:underline"
                 >
                   Masuk Sekarang
@@ -435,7 +474,7 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
                         />
                       </div>
                     </div>
-                    
+
                     <div className="space-y-1">
                       <label className="text-[9px] font-extrabold text-slate-500">NAMA PEMILIK REKENING</label>
                       <input
@@ -518,7 +557,7 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
                   onClick={handleOnboardingFinish}
                   className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/10 transition-all flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  Mulai Gunakan Kostos!
+                  Mulai Gunakan StayFlow!
                 </button>
               )}
             </div>

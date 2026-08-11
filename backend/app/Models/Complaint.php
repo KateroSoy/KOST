@@ -17,8 +17,13 @@ class Complaint extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id', 'tenantId', 'tenantName', 'roomId', 'roomNumber', 'title',
+        'id', 'user_id', 'tenantId', 'tenantName', 'roomId', 'roomNumber', 'title',
         'category', 'status', 'priority', 'date', 'description',
         'repairCost', 'notes',
     ];
+
+    protected $casts = [
+        'repairCost' => 'integer',
+    ];
 }
+

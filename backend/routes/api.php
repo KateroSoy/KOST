@@ -1,43 +1,72 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\PropertyController;
+use App\Http\Controllers\PublicController;
 use App\Http\Controllers\RestoreController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\TenantController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/health', function () {
-    return response()->json(['ok' => true]);
+// Public routes (no auth required)
+Route::get('/health', fn () => response()->json(['ok' => true]));
+Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/login',    [AuthController::class, 'login']);
+Route::get('/public/owner/{slug}', [PublicController::class, 'show']);
+
+// Protected routes (require Bearer token via Sanctum)
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Auth
+    Route::get('/auth/me',               [AuthController::class, 'me']);
+    Route::post('/auth/logout',          [AuthController::class, 'logout']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+
+    // Rooms
+    Route::get('/rooms',            [RoomController::class, 'index']);
+    Route::post('/rooms',           [RoomController::class, 'store']);
+    Route::put('/rooms/{id}',       [RoomController::class, 'replace']);   // Full room edit
+    Route::patch('/rooms/{id}',     [RoomController::class, 'update']);    // Partial (status/housekeeping)
+    Route::delete('/rooms/{id}',    [RoomController::class, 'destroy']);
+
+    // Tenants
+    Route::get('/tenants',                  [TenantController::class, 'index']);
+    Route::post('/tenants',                 [TenantController::class, 'store']);
+    Route::put('/tenants/{id}',             [TenantController::class, 'update']);  // Full tenant edit
+    Route::post('/tenants/{id}/move-out',   [TenantController::class, 'moveOut']);
+    Route::delete('/tenants/{id}',          [TenantController::class, 'destroy']);
+
+    // Expenses
+    Route::get('/expenses',          [ExpenseController::class, 'index']);
+    Route::post('/expenses',         [ExpenseController::class, 'store']);
+    Route::delete('/expenses/{id}',  [ExpenseController::class, 'destroy']);
+
+    // Complaints
+    Route::get('/complaints',          [ComplaintController::class, 'index']);
+    Route::post('/complaints',         [ComplaintController::class, 'store']);
+    Route::patch('/complaints/{id}',   [ComplaintController::class, 'update']);
+    Route::delete('/complaints/{id}',  [ComplaintController::class, 'destroy']);
+
+    // Bills
+    Route::get('/bills',                    [BillController::class, 'index']);
+    Route::post('/bills',                   [BillController::class, 'store']);
+    Route::post('/bills/{id}/payments',     [BillController::class, 'payments']);
+    Route::delete('/bills/{id}',            [BillController::class, 'destroy']);
+
+    // Settings
+    Route::get('/settings',  [SettingController::class, 'index']);
+    Route::put('/settings',  [SettingController::class, 'update']);
+
+    // Properties (multi-tenant, persisted to DB)
+    Route::get('/properties',          [PropertyController::class, 'index']);
+    Route::post('/properties',         [PropertyController::class, 'store']);
+    Route::put('/properties/{id}',     [PropertyController::class, 'update']);
+    Route::delete('/properties/{id}',  [PropertyController::class, 'destroy']);
+
+    // Restore (full data import for authenticated user only)
+    Route::post('/restore', [RestoreController::class, 'store']);
 });
-
-Route::get('/rooms', [RoomController::class, 'index']);
-Route::post('/rooms', [RoomController::class, 'store']);
-Route::patch('/rooms/{id}', [RoomController::class, 'update']);
-Route::delete('/rooms/{id}', [RoomController::class, 'destroy']);
-
-Route::get('/tenants', [TenantController::class, 'index']);
-Route::post('/tenants', [TenantController::class, 'store']);
-Route::post('/tenants/{id}/move-out', [TenantController::class, 'moveOut']);
-Route::delete('/tenants/{id}', [TenantController::class, 'destroy']);
-
-Route::get('/expenses', [ExpenseController::class, 'index']);
-Route::post('/expenses', [ExpenseController::class, 'store']);
-Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy']);
-
-Route::get('/complaints', [ComplaintController::class, 'index']);
-Route::post('/complaints', [ComplaintController::class, 'store']);
-Route::patch('/complaints/{id}', [ComplaintController::class, 'update']);
-Route::delete('/complaints/{id}', [ComplaintController::class, 'destroy']);
-
-Route::get('/bills', [BillController::class, 'index']);
-Route::post('/bills', [BillController::class, 'store']);
-Route::post('/bills/{id}/payments', [BillController::class, 'payments']);
-Route::delete('/bills/{id}', [BillController::class, 'destroy']);
-
-Route::get('/settings', [SettingController::class, 'index']);
-Route::put('/settings', [SettingController::class, 'update']);
-
-Route::post('/restore', [RestoreController::class, 'store']);

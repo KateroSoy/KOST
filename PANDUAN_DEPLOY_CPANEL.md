@@ -1,111 +1,158 @@
-# Panduan Deploy & Hosting Kostweb di cPanel
+# Panduan Deploy StayFlow SaaS ke Hostinger (Laravel + React)
 
-Aplikasi ini menggunakan React (Vite) untuk frontend dan backend Express yang menyimpan data ke **database MySQL remote** (dibuat di hPanel Hostinger). Ada **dua cara** untuk mengunggahnya:
+## Arsitektur Produksi
 
-- **METODE 1 (Hosting Statis)**: paling mudah, tetapi backend tidak ikut ter-deploy — aplikasi berjalan dalam mode offline/localStorage saja (data hanya tersimpan di browser masing-masing).
-- **METODE 2 (Node.js App)**: **wajib dipakai jika ingin data tersimpan di MySQL** — backend dan frontend jalan bersama dalam satu aplikasi Node.js.
+StayFlow menggunakan **dua komponen**:
+1. **React Frontend** (Vite build → `dist/`) — static files served oleh Laravel
+2. **Laravel 11 Backend** (`backend/`) — dikonfigurasi sebagai PHP App di Hostinger
 
-Sebelum METODE 2, selesaikan dulu bagian **Persiapan Database MySQL di hPanel** di bawah.
-
----
-
-## METODE 1: Hosting Statis (Sangat Disarankan, Lebih Mudah)
-Metode ini adalah cara paling umum untuk aplikasi React. Kita akan mengubah (build) kode menjadi file HTML, CSS, dan JS murni, lalu mengunggahnya ke folder `public_html`.
-
-### Tahap 1: Build Aplikasi di Komputer Anda
-1. Buka folder `kostweb` di VS Code.
-2. Buka terminal VS Code (`Ctrl` + `\``).
-3. Jalankan perintah ini untuk mem-build aplikasi:
-   ```bash
-   npm run build
-   ```
-4. Tunggu sampai proses selesai. Anda akan melihat folder baru bernama **`dist`** muncul di dalam folder proyek Anda.
-5. Buka folder `dist` tersebut di File Explorer Windows Anda.
-6. **Blok/pilih semua file dan folder** yang ada **di dalam** folder `dist` (termasuk `index.html`, folder `assets`, dll).
-7. Klik kanan, lalu jadikan satu file **ZIP** (misalnya `upload.zip`).
-
-### Tahap 2: Upload ke cPanel
-1. Login ke akun cPanel Anda.
-2. Cari dan buka menu **File Manager**.
-3. Di sebelah kiri, klik folder **`public_html`** (atau folder domain/subdomain tujuan Anda).
-4. Klik tombol **Upload** di menu bagian atas, lalu pilih file `upload.zip` yang tadi Anda buat.
-5. Tunggu hingga bar upload menjadi hijau (100%), lalu klik "Go Back".
-6. Di File Manager, klik kanan pada `upload.zip` lalu pilih **Extract**. Klik "Extract File".
-7. (Opsional) Hapus file `upload.zip` untuk menghemat ruang.
-
-### Tahap 3: Konfigurasi Routing (Sangat Penting)
-Karena ini adalah aplikasi React (SPA), jika user me-refresh halaman selain halaman utama, cPanel akan menampilkan error 404. Kita perlu membuat file `.htaccess`.
-1. Di dalam folder `public_html`, klik tombol **+ File** di pojok kiri atas.
-2. Beri nama file: **`.htaccess`** (jangan lupa titik di depannya), lalu klik Create New File.
-3. Klik kanan pada file `.htaccess` tersebut, lalu pilih **Edit**.
-4. Masukkan kode berikut ke dalamnya:
-   ```apache
-   <IfModule mod_rewrite.c>
-     RewriteEngine On
-     RewriteBase /
-     RewriteRule ^index\.html$ - [L]
-     RewriteCond %{REQUEST_FILENAME} !-f
-     RewriteCond %{REQUEST_FILENAME} !-d
-     RewriteRule . /index.html [L]
-   </IfModule>
-   ```
-5. Klik **Save Changes** di pojok kanan atas.
-6. Selesai! Buka domain Anda, aplikasi sudah berjalan.
+**Domain:** `https://blueviolet-gorilla-427889.hostingersite.com`
 
 ---
 
-## Persiapan Database MySQL di hPanel
+## LANGKAH 1: Update Kode (Setiap Kali Ada Perubahan)
 
-1. Login ke hPanel Hostinger → menu **Databases → Management (MySQL Databases)**.
-2. Buat database baru: isi nama database, username, dan password. Catat ketiganya.
-3. Setelah dibuat, hPanel menampilkan **MySQL Host** (contoh: `srv1234.hstgr.io` — BUKAN `localhost` kalau backend jalan di komputer Anda). Catat hostname ini.
-4. Kalau backend dijalankan dari luar Hostinger (misal dari komputer Windows Anda), buka menu **Databases → Remote MySQL**, lalu tambahkan IP publik Anda — atau isi `%` (izinkan semua host) kalau IP Anda sering berubah.
-5. Di komputer Anda, salin `.env.example` menjadi `.env`, lalu isi:
+Di komputer lokal Anda:
 
-   ```
-   DB_HOST=srv1234.hstgr.io   (hostname dari langkah 3)
-   DB_PORT=3306
-   DB_USER=u123456_namauser
-   DB_PASSWORD=passwordAnda
-   DB_NAME=u123456_namadb
-   ```
+```bash
+# 1. Build React frontend
+npm run build
 
-6. Tabel dibuat otomatis saat server pertama kali jalan — tidak perlu import SQL manual. Saat database masih kosong, server otomatis mengisinya dengan data contoh. Semua tabel aplikasi ini berawalan **`kostos_`** (misal `kostos_rooms`, `kostos_bills`), jadi aman meskipun database yang sama juga dipakai aplikasi lain (WordPress, dll).
-
-> **Catatan untuk pemakaian lokal (Windows):** setelah `.env` terisi, aplikasi bisa langsung dipakai di komputer sendiri tanpa deploy — `npm run dev` untuk development, atau `npm run build` lalu `npm run start` (START.bat) untuk pemakaian sehari-hari. Semua data tersimpan di MySQL remote hPanel.
+# 2. Salin hasil build ke public/ Laravel
+xcopy /E /Y dist\* backend\public\
+```
 
 ---
 
-## METODE 2: Hosting Sebagai Node.js App (Wajib untuk Backend MySQL)
-Gunakan metode ini jika hosting Anda mendukung "Setup Node.js App" dan Anda ingin data tersimpan di MySQL.
+## LANGKAH 2: Upload ke Hostinger via Git / FTP
 
-### Tahap 1: Persiapan File
-1. Di komputer Anda, pastikan Anda sudah melakukan build (`npm run build`).
-2. Buat file ZIP baru yang berisi file dan folder berikut dari dalam folder `kostweb`:
-   - `dist` (seluruh folder)
-   - `server` (seluruh folder — berisi kode API)
-   - `server.js`
-   - `package.json`
-   - `package-lock.json`
-   - `.env` (isi sesuai bagian Persiapan Database; **di hosting Hostinger, `DB_HOST` biasanya `localhost`** karena backend dan database berada di server yang sama)
+### Opsi A — Git Deploy (Direkomendasikan)
+```bash
+git add .
+git commit -m "Production update: [deskripsi perubahan]"
+git push
+```
 
-### Tahap 2: Buat Node.js App di cPanel
-1. Login ke cPanel, gulir ke bawah ke bagian **Software**, lalu klik **Setup Node.js App**.
-2. Klik tombol **Create Application**.
-3. Isi pengaturannya seperti ini:
-   - **Node.js version**: Pilih versi terbaru yang tersedia (misal 20.x atau 18.x).
-   - **Application mode**: Production.
-   - **Application root**: Isi dengan `kostweb_app` (atau nama folder lain terserah Anda).
-   - **Application URL**: Pilih domain/subdomain Anda.
-   - **Application startup file**: Ketik `server.js`.
-4. Klik tombol **CREATE** di pojok kanan atas.
+### Opsi B — Upload Manual (ZIP)
+1. ZIP seluruh folder `backend/` 
+2. Upload via hPanel → File Manager ke folder `public_html/`
+3. Extract → rename ke `backend/` atau sesuai konfigurasi
 
-### Tahap 3: Upload dan Install
-1. Kembali ke Beranda cPanel, buka **File Manager**.
-2. Buka folder root aplikasi yang tadi Anda buat (misal `kostweb_app`).
-3. **Upload** file ZIP dari Tahap 1 ke dalam folder tersebut, lalu **Extract**.
-4. Kembali ke halaman **Setup Node.js App** di cPanel.
-5. Klik ikon pensil (Edit) pada aplikasi yang baru Anda buat.
-6. Scroll ke bawah dan cari tombol **Run NPM Install**, lalu klik. (Tunggu beberapa menit hingga proses instalasi modul selesai).
-7. Setelah selesai, klik tombol **RESTART** di bagian atas (di sebelah tulisan Stopped/Started).
-8. Selesai! Buka domain Anda.
+---
+
+## LANGKAH 3: Jalankan Migrasi Database (PENTING!)
+
+> [!IMPORTANT]
+> Setiap ada migration baru, WAJIB dijalankan via SSH atau Terminal hPanel.
+
+### Via SSH / hPanel Terminal:
+```bash
+# Masuk ke folder Laravel
+cd /home/u330327941/domains/blueviolet-gorilla-427889.hostingersite.com/public_html
+
+# Jalankan semua pending migrations
+php artisan migrate --force
+```
+
+### Migration Baru per Update:
+| File | Tabel yang Dibuat |
+|------|-------------------|
+| `2026_08_11_000001_create_kostos_properties_table.php` | `kostos_properties` (wajib untuk fitur Multi-Properti!) |
+
+---
+
+## LANGKAH 4: Verifikasi Production Checklist
+
+Setelah deploy, buka browser dan tes:
+
+### ✅ Auth Flow
+- [ ] Register akun baru → cek slug dibuat di DB (`kostos_users.slug`)
+- [ ] Login → token tersimpan di localStorage
+- [ ] Dashboard muncul dengan data dari API (bukan dummy)
+- [ ] Logout → semua localStorage dihapus, redirect ke Landing
+
+### ✅ Data Isolation (Multi-Tenant)
+- [ ] Register 2 akun berbeda → data TIDAK bercampur
+- [ ] Room owner A tidak muncul di dashboard owner B
+- [ ] `GET /api/rooms` hanya returns rooms milik token yg aktif
+
+### ✅ CRUD Operations
+- [ ] Tambah kamar → kamar muncul di DB `kostos_rooms` dengan `user_id`
+- [ ] Tambah penghuni → bill otomatis terbuat (1 bill, bukan duplikat)
+- [ ] Catat pembayaran → status bill berubah ke Lunas
+- [ ] Status penghuni berubah ke Lunas setelah bayar
+- [ ] Hapus bill Lunas → harus **ditolak** (422 error — financial record protection)
+- [ ] Tambah komplain → selesaikan → pengeluaran reparasi otomatis terbuat
+
+### ✅ Multi-Properti
+- [ ] Tambah properti → tersimpan di `kostos_properties` (bukan hanya localStorage)
+- [ ] Login dari browser/device lain → properti masih ada
+
+### ✅ Public Landing Page
+- [ ] Akses `?owner={slug}` → tampil data kamar yang tersedia
+- [ ] Data owner slug A tidak bocor ke owner slug B
+
+### ✅ Demo Mode
+- [ ] Klik "Coba Demo" → banner kuning muncul "Mode Demo Aktif"
+- [ ] Klik "Daftar Gratis" di banner → redirect ke Register
+
+---
+
+## Konfigurasi .env Laravel (backend/.env)
+
+```env
+APP_NAME=StayFlow
+APP_ENV=production
+APP_KEY=base64:YIvxTpr5lTZ9V5GeePkKfI2kIfV5H8a8tbl3hWIb5C0=
+APP_DEBUG=false
+APP_URL=https://blueviolet-gorilla-427889.hostingersite.com
+
+DB_CONNECTION=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=u330327941_nxSGS
+DB_USERNAME=u330327941_UCCEN
+DB_PASSWORD=Kostosxx1
+
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+CACHE_STORE=file
+QUEUE_CONNECTION=sync
+```
+
+---
+
+## Perubahan di v2.0 (2026-08-11)
+
+### Bug Fixes
+- ✅ Middleware `ForceJsonResponse` sudah terdaftar — API error kini selalu JSON
+- ✅ `TenantController::store()` tidak lagi membuat bill duplikat pada restore
+- ✅ `RestoreController` kini idempotent — aman dijalankan berkali-kali
+- ✅ `Expense` model `$fillable` sudah termasuk `seq` — ordering tidak error
+- ✅ `authLogout` tidak lagi memanggil `clearToken()` dua kali
+- ✅ Bill `Lunas` sekarang dilindungi dari penghapusan (HTTP 422)
+
+### Fitur Baru
+- ✅ `PUT /api/rooms/{id}` — full room edit via API
+- ✅ `PUT /api/tenants/{id}` — full tenant edit via API
+- ✅ `GET/POST/PUT/DELETE /api/properties` — multi-properti kini tersimpan ke MySQL
+- ✅ Tabel `kostos_properties` baru di database
+- ✅ Mode Demo menampilkan banner peringatan kuning
+- ✅ Login/Register menampilkan spinner + button disabled selama loading
+
+---
+
+## Troubleshooting
+
+### API Mengembalikan HTML (bukan JSON)
+→ Pastikan `ForceJsonResponse` middleware ada di `bootstrap/app.php` ✅ (sudah diperbaiki)
+
+### 401 Unauthorized setelah Login
+→ Token expired. Clear cache browser → login ulang. Atau cek `SANCTUM_STATEFUL_DOMAINS` di .env.
+
+### Kamar/Data tidak muncul setelah login ulang
+→ Cek apakah `user_id` tersimpan di semua tabel. Jalankan: `SELECT * FROM kostos_rooms WHERE user_id IS NULL`
+
+### Migration Gagal
+→ Cek apakah tabel sudah ada: `SHOW TABLES LIKE 'kostos_%'`
+→ Migration aman diulang — semua migration menggunakan `hasTable()` / `hasColumn()` guard.

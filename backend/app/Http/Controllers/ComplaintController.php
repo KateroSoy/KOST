@@ -7,24 +7,31 @@ use Illuminate\Http\Request;
 
 class ComplaintController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Complaint::orderBy('seq', 'desc')->get();
+        return Complaint::where('user_id', $request->user()->id)
+            ->orderBy('seq', 'desc')
+            ->get();
     }
 
     public function store(Request $request)
     {
-        $complaint = Complaint::updateOrCreate(['id' => $request->input('id')], $request->all());
+        $data = $request->all();
+        $data['user_id'] = $request->user()->id;
+
+        $complaint = Complaint::updateOrCreate(
+            ['id' => $data['id'], 'user_id' => $data['user_id']],
+            $data
+        );
 
         return response()->json($complaint, 201);
     }
 
-    // Merges only the fields sent. Never creates an Expense here even when
-    // status becomes 'Selesai' with a repairCost — the client syncs that
-    // repair expense itself via a separate POST /api/expenses call.
     public function update(Request $request, string $id)
     {
-        $complaint = Complaint::find($id);
+        $complaint = Complaint::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->first();
 
         if (! $complaint) {
             return response()->json(['error' => 'Komplain tidak ditemukan'], 404);
@@ -41,9 +48,11 @@ class ComplaintController extends Controller
         return response()->json($complaint);
     }
 
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        Complaint::destroy($id);
+        Complaint::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->delete();
 
         return response()->json(['ok' => true]);
     }

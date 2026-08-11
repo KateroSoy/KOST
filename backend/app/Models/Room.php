@@ -17,11 +17,22 @@ class Room extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id', 'number', 'status', 'type', 'price', 'floor', 'size',
-        'facilities', 'tenantId', 'notes', 'lastMaintenanceDate',
+        'id', 'user_id', 'number', 'status', 'housekeepingStatus', 'type',
+        'price', 'pricePerDay', 'pricePerMonth', 'pricePerWeek',
+        'rentalTypesAllowed', 'floor', 'size', 'maxGuests',
+        'facilities', 'images', 'description',
+        'tenantId', 'notes', 'lastMaintenanceDate',
     ];
 
     protected $casts = [
-        'facilities' => 'array',
+        'facilities'         => 'array',
+        'rentalTypesAllowed' => 'array',
+        'images'             => 'array',
+        'price'              => 'integer',
+        'pricePerDay'        => 'integer',
+        'pricePerMonth'      => 'integer',
+        'pricePerWeek'       => 'integer',
+        'floor'              => 'integer',
+        'maxGuests'          => 'integer',
     ];
 }

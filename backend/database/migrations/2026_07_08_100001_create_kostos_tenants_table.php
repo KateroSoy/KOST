@@ -1,43 +1,44 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // kostos_tenants already exists (created by the Express backend, see
-        // server/db.js) — guard keeps this idempotent on the shared DB.
         if (Schema::hasTable('kostos_tenants')) {
             return;
         }
 
-        Schema::create('kostos_tenants', function (Blueprint $table) {
-            $table->string('id', 64)->primary();
-            $table->unsignedInteger('seq')->autoIncrement();
-            $table->unique('seq');
-            $table->string('name', 191);
-            $table->string('phone', 32)->default('');
-            $table->string('email', 191)->default('');
-            $table->json('emergencyContact')->nullable();
-            $table->string('idNumber', 64)->default('');
-            $table->string('roomAssigned', 64)->default('');
-            $table->string('moveInDate', 32)->default('');
-            $table->integer('rentAmount')->default(0);
-            $table->integer('deposit')->default(0);
-            $table->string('status', 16);
-            $table->text('notes')->nullable();
-            $table->text('idPhotoUrl')->nullable();
-        });
+        DB::statement("CREATE TABLE kostos_tenants (
+            id VARCHAR(64) PRIMARY KEY,
+            seq INT NOT NULL AUTO_INCREMENT, UNIQUE KEY tenants_seq (seq),
+            name VARCHAR(191) NOT NULL,
+            phone VARCHAR(32) NOT NULL DEFAULT '',
+            email VARCHAR(191) NOT NULL DEFAULT '',
+            guestType VARCHAR(16) NOT NULL DEFAULT 'Bulanan',
+            checkInDate VARCHAR(32) NULL,
+            checkOutDate VARCHAR(32) NULL,
+            idType VARCHAR(16) NOT NULL DEFAULT 'KTP',
+            vehicleNumber VARCHAR(32) NULL,
+            totalGuests INT NOT NULL DEFAULT 1,
+            bookingOrigin VARCHAR(32) NOT NULL DEFAULT 'Walk-in',
+            emergencyContact JSON,
+            idNumber VARCHAR(64) NOT NULL DEFAULT '',
+            roomAssigned VARCHAR(64) NOT NULL DEFAULT '',
+            moveInDate VARCHAR(32) NOT NULL DEFAULT '',
+            rentAmount INT NOT NULL DEFAULT 0,
+            deposit INT NOT NULL DEFAULT 0,
+            status VARCHAR(16) NOT NULL DEFAULT 'Belum Bayar',
+            notes TEXT NULL,
+            idPhotoUrl TEXT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
     public function down(): void
     {
-        // No-op: this migration never truly "owns" table creation on the
-        // shared remote DB (up() already skips creation when the table
-        // pre-exists), so rollback must never drop the real kostos_tenants
-        // table and its live data.
+        Schema::dropIfExists('kostos_tenants');
     }
 };

@@ -1,110 +1,256 @@
-import { Room, Tenant, Bill, Expense, Complaint, KostSettings } from './types';
+import { Room, Tenant, Bill, Expense, Complaint, KostSettings, Property } from './types';
 import { 
   INITIAL_SETTINGS, 
   INITIAL_ROOMS, 
   INITIAL_TENANTS, 
   INITIAL_BILLS, 
   INITIAL_EXPENSES, 
-  INITIAL_COMPLAINTS 
+  INITIAL_COMPLAINTS,
+  INITIAL_PROPERTIES
 } from './data';
 
-// Helper function with timeout
-const fetchWithTimeout = async (resource: string, options: RequestInit = {}) => {
-  const timeout = 8000; // 8 seconds timeout (php artisan serve on Windows can't fork workers, so concurrent requests serialize)
+// ─── Token helpers ────────────────────────────────────────────────────────────
+
+export const getToken = (): string | null => localStorage.getItem('kostos_token');
+export const setToken = (token: string) => localStorage.setItem('kostos_token', token);
+export const clearToken = () => {
+  localStorage.removeItem('kostos_token');
+  localStorage.removeItem('kostos_owner_slug');
+  localStorage.removeItem('kostos_settings');
+  localStorage.removeItem('kostos_rooms');
+  localStorage.removeItem('kostos_tenants');
+  localStorage.removeItem('kostos_bills');
+  localStorage.removeItem('kostos_expenses');
+  localStorage.removeItem('kostos_complaints');
+  localStorage.removeItem('kostos_properties');
+  localStorage.removeItem('kostos_logged_in');
+  localStorage.removeItem('kostos_selected_property');
+};
+
+// ─── Fetch with auth headers & timeout ───────────────────────────────────────
+
+const parseJsonResponse = async (res: Response) => {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('Respon server tidak valid (bukan JSON)');
+  }
+};
+
+const fetchWithAuth = async (resource: string, options: RequestInit = {}) => {
+  const timeout = 8000;
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
-  
+
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    ...(options.headers as Record<string, string> ?? {}),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(resource, {
     ...options,
-    signal: controller.signal  
+    headers,
+    signal: controller.signal,
   });
   clearTimeout(id);
   return response;
 };
 
-// Global indicator to track if we are in offline mode
+// ─── Offline mode flag ────────────────────────────────────────────────────────
+
 export let isOfflineMode = false;
 
-// 1. DATA FETCHING (GET) - Tries API, falls back to LocalStorage
-export const fetchAllData = async () => {
+// ─── Auth API calls ───────────────────────────────────────────────────────────
+
+export interface AuthResult {
+  token: string;
+  user: { id: number; name: string; phone: string; slug?: string };
+}
+
+export const authRegister = async (params: {
+  name: string;
+  phone: string;
+  password: string;
+  kostName?: string;
+  address?: string;
+}): Promise<AuthResult> => {
+  const res = await fetchWithAuth('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  const data = await parseJsonResponse(res);
+  if (!res.ok) {
+    throw new Error(data?.message || (data?.errors ? Object.values(data.errors).flat().join(', ') : 'Registrasi gagal'));
+  }
+  return data;
+};
+
+export const authLogin = async (params: {
+  phone: string;
+  password: string;
+}): Promise<AuthResult> => {
+  const res = await fetchWithAuth('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  const data = await parseJsonResponse(res);
+  if (!res.ok) {
+    throw new Error(data?.message || (data?.errors ? Object.values(data.errors).flat().join(', ') : 'Login gagal'));
+  }
+  return data;
+};
+
+export const authLogout = async (): Promise<void> => {
+  // Only call API if we have a token; clearToken is called by the caller (App.tsx)
+  await fetchWithAuth('/api/auth/logout', { method: 'POST' }).catch(() => {});
+};
+
+export const authChangePassword = async (params: {
+  oldPassword: string;
+  newPassword: string;
+}): Promise<void> => {
+  const res = await fetchWithAuth('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  const data = await parseJsonResponse(res);
+  if (!res.ok) {
+    throw new Error(data?.message || (data?.errors ? Object.values(data.errors).flat().join(', ') : 'Gagal mengubah kata sandi'));
+  }
+};
+
+// ─── Public landing page data (no auth) ──────────────────────────────────────
+
+export interface PublicOwnerData {
+  owner: { name: string; slug: string; phone: string };
+  settings: Record<string, any>;
+  rooms: any[];
+}
+
+export const fetchPublicOwnerData = async (slug: string): Promise<PublicOwnerData | null> => {
   try {
-    // Try to ping the backend to see if it's alive (we can ping /api/settings as a health check)
-    const res = await fetchWithTimeout('/api/settings');
-    if (!res.ok) throw new Error('API not ok');
-    
-    // If backend is alive, fetch all data
+    const res = await fetch(`/api/public/owner/${slug}`, {
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+};
+
+// ─── Data fetch (GET) — tries API, falls back to LocalStorage ─────────────────
+
+export const fetchAllData = async () => {
+  if (!getToken()) {
+    // No token → offline / not logged in
+    isOfflineMode = true;
+    return getLocalStorageFallback();
+  }
+
+  try {
+    const healthRes = await fetchWithAuth('/api/settings');
+    if (healthRes.status === 401) {
+      // Token expired
+      clearToken();
+      throw new Error('Unauthorized');
+    }
+    if (!healthRes.ok) throw new Error('API not ok');
+
     isOfflineMode = false;
-    const [settings, rooms, tenants, bills, expenses, complaints] = await Promise.all([
-      res.json(),
-      fetchWithTimeout('/api/rooms').then(r => r.json()),
-      fetchWithTimeout('/api/tenants').then(r => r.json()),
-      fetchWithTimeout('/api/bills').then(r => r.json()),
-      fetchWithTimeout('/api/expenses').then(r => r.json()),
-      fetchWithTimeout('/api/complaints').then(r => r.json())
+
+    // Fetch all endpoints in parallel; properties endpoint may not exist on older deploys
+    const [settings, rooms, tenants, bills, expenses, complaints, propertiesResult] = await Promise.all([
+      healthRes.json(),
+      fetchWithAuth('/api/rooms').then(r => r.json()),
+      fetchWithAuth('/api/tenants').then(r => r.json()),
+      fetchWithAuth('/api/bills').then(r => r.json()),
+      fetchWithAuth('/api/expenses').then(r => r.json()),
+      fetchWithAuth('/api/complaints').then(r => r.json()),
+      fetchWithAuth('/api/properties').then(r => r.ok ? r.json() : []).catch(() => []),
     ]);
 
-    // Save to localStorage so offline mode has the latest copy
+    // Persist to localStorage for offline fallback
     localStorage.setItem('kostos_settings', JSON.stringify(settings));
     localStorage.setItem('kostos_rooms', JSON.stringify(rooms));
     localStorage.setItem('kostos_tenants', JSON.stringify(tenants));
     localStorage.setItem('kostos_bills', JSON.stringify(bills));
     localStorage.setItem('kostos_expenses', JSON.stringify(expenses));
     localStorage.setItem('kostos_complaints', JSON.stringify(complaints));
+    
+    // Merge API properties with local ones (API is authoritative if it has records)
+    const properties: Property[] = Array.isArray(propertiesResult) && propertiesResult.length > 0
+      ? propertiesResult
+      : (() => {
+          try {
+            const raw = localStorage.getItem('kostos_properties');
+            return raw ? JSON.parse(raw) : INITIAL_PROPERTIES;
+          } catch { return INITIAL_PROPERTIES; }
+        })();
+    
+    if (Array.isArray(propertiesResult) && propertiesResult.length > 0) {
+      localStorage.setItem('kostos_properties', JSON.stringify(properties));
+    }
 
-    return { settings, rooms, tenants, bills, expenses, complaints };
+    return { settings, rooms, tenants, bills, expenses, complaints, properties };
 
   } catch (error) {
-    // FALLBACK TO LOCALSTORAGE
-    console.warn('⚠️ [Hybrid API] Backend tidak merespons. Berjalan dalam mode LocalStorage (Offline).', error);
+    console.warn('⚠️ [Hybrid API] Backend tidak merespons. Mode offline.', error);
     isOfflineMode = true;
-
-    const parseLocal = (key: string, fallback: any) => {
-      try {
-        const item = localStorage.getItem(key);
-        if (item) return JSON.parse(item);
-        // If no item, set fallback
-        localStorage.setItem(key, JSON.stringify(fallback));
-        return fallback;
-      } catch {
-        return fallback;
-      }
-    };
-
-    return {
-      settings: parseLocal('kostos_settings', INITIAL_SETTINGS),
-      rooms: parseLocal('kostos_rooms', INITIAL_ROOMS),
-      tenants: parseLocal('kostos_tenants', INITIAL_TENANTS),
-      bills: parseLocal('kostos_bills', INITIAL_BILLS),
-      expenses: parseLocal('kostos_expenses', INITIAL_EXPENSES),
-      complaints: parseLocal('kostos_complaints', INITIAL_COMPLAINTS),
-    };
+    return getLocalStorageFallback();
   }
 };
 
-// 2. DATA MUTATION (SYNC) - Updates LocalStorage instantly, tries to sync to API in background
-// We export a generic sync function that App.tsx can call whenever state changes
+const getLocalStorageFallback = () => {
+  const parseLocal = (key: string, fallback: any) => {
+    try {
+      const item = localStorage.getItem(key);
+      if (item) return JSON.parse(item);
+      localStorage.setItem(key, JSON.stringify(fallback));
+      return fallback;
+    } catch { return fallback; }
+  };
+
+  return {
+    settings:   parseLocal('kostos_settings',   INITIAL_SETTINGS),
+    rooms:      parseLocal('kostos_rooms',       INITIAL_ROOMS),
+    tenants:    parseLocal('kostos_tenants',     INITIAL_TENANTS),
+    bills:      parseLocal('kostos_bills',       INITIAL_BILLS),
+    expenses:   parseLocal('kostos_expenses',    INITIAL_EXPENSES),
+    complaints: parseLocal('kostos_complaints',  INITIAL_COMPLAINTS),
+    properties: parseLocal('kostos_properties',  INITIAL_PROPERTIES),
+  };
+};
+
+// ─── Data sync (POST/PUT/PATCH/DELETE) ────────────────────────────────────────
+
 export const syncToBackend = async (endpoint: string, method: 'POST'|'PUT'|'PATCH'|'DELETE', data?: any) => {
-  if (isOfflineMode) {
-    // If we know we are offline, don't even bother spamming the network, just return true
-    // App.tsx already saves to localStorage via useEffect
-    return true;
-  }
+  if (isOfflineMode || !getToken()) return true;
 
   try {
-    const res = await fetchWithTimeout(`/api/${endpoint}`, {
+    const res = await fetchWithAuth(`/api/${endpoint}`, {
       method,
-      headers: { 'Content-Type': 'application/json' },
-      body: data ? JSON.stringify(data) : undefined
+      body: data ? JSON.stringify(data) : undefined,
     });
-    
+
+    if (res.status === 401) {
+      clearToken();
+      return false;
+    }
     if (!res.ok) {
-      console.warn(`[Hybrid API] Gagal sinkronisasi ke backend untuk /api/${endpoint}`);
+      const errData = await parseJsonResponse(res).catch(() => null);
+      console.warn(`[Hybrid API] Gagal sinkronisasi /api/${endpoint}`, errData?.error || '');
       return false;
     }
     return true;
   } catch (error) {
-    console.warn(`[Hybrid API] Koneksi terputus saat sinkronisasi /api/${endpoint}. Tersimpan lokal.`);
-    // We don't throw an error here to prevent the UI from crashing. The data is safely in localStorage.
+    console.warn(`[Hybrid API] Koneksi terputus saat sinkronisasi /api/${endpoint}.`);
     return false;
   }
 };

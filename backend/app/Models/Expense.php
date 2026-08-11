@@ -16,5 +16,9 @@ class Expense extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['id', 'category', 'description', 'date', 'amount', 'notes'];
+    protected $fillable = ['id', 'seq', 'user_id', 'category', 'description', 'date', 'amount', 'notes'];
+
+    protected $casts = [
+        'amount' => 'integer',
+    ];
 }
