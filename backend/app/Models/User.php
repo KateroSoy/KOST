@@ -16,6 +16,10 @@ class User extends Authenticatable
         'name',
         'phone',
         'slug',
+        'role',
+        'status',
+        'plan',
+        'expires_at',
         'email',
         'password',
     ];
@@ -29,8 +33,17 @@ class User extends Authenticatable
     {
         return [
             'password'   => 'hashed',
+            'expires_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Check if user is Super Admin (SaaS Platform Owner)
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
     }
 }

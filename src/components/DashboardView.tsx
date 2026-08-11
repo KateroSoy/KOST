@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-  Building, Users, LogOut, CheckCircle2, AlertCircle, 
-  TrendingUp, TrendingDown, Landmark, MessageSquare, Wrench, ChevronRight, HelpCircle
+  Building, Users, CheckCircle2, AlertCircle, 
+  TrendingUp, TrendingDown, Landmark, MessageSquare, Wrench, ChevronRight,
+  Sparkles, Calendar, Moon, UserPlus, Sparkle, RefreshCw, Eye, ArrowUpRight,
+  Inbox
 } from 'lucide-react';
 import { Room, Tenant, Bill, Complaint, Expense, KostSettings } from '../types';
 
@@ -16,14 +18,30 @@ interface DashboardViewProps {
   onNavigateToTab: (tab: string, arg?: string) => void;
   onOpenReminderModal: (bill: Bill) => void;
   onOpenPaymentForm: (bill: Bill) => void;
+  onAddTenant?: (tenant: Tenant, roomId: string) => void;
 }
 
 export function DashboardView({ 
   rooms, tenants, bills, expenses, complaints, settings, selectedMonth, 
-  onNavigateToTab, onOpenReminderModal, onOpenPaymentForm
+  onNavigateToTab, onOpenReminderModal, onOpenPaymentForm, onAddTenant
 }: DashboardViewProps) {
-  
-  // Dynamic month key builder: "Juni 2026" -> "2026-06"
+
+  // Quick Check-in Modal state
+  const [quickCheckInOpen, setQuickCheckInOpen] = useState(false);
+  const [selectedRoomForCheckIn, setSelectedRoomForCheckIn] = useState<string>('');
+  const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guestType, setGuestType] = useState<'Harian' | 'Bulanan'>('Harian');
+  const [checkInDate, setCheckInDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [checkOutDate, setCheckOutDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().split('T')[0];
+  });
+  const [totalGuests, setTotalGuests] = useState(1);
+  const [vehicleNumber, setVehicleNumber] = useState('');
+
+  // Helper date key builder
   const getMonthKey = (month: string): string => {
     const monthMap: Record<string, string> = {
       'Januari': '01', 'Februari': '02', 'Maret': '03', 'April': '04',
@@ -31,38 +49,41 @@ export function DashboardView({
       'September': '09', 'Oktober': '10', 'November': '11', 'Desember': '12'
     };
     const parts = month.split(' ');
-    const monthNum = monthMap[parts[0]] || '06';
-    const year = parts[1] || '2026';
+    const monthNum = monthMap[parts[0]] || '08';
+    const year = parts[1] || new Date().getFullYear().toString();
     return `${year}-${monthNum}`;
   };
 
-  // Calculate stats for current month
-  const activeBills = bills.filter(b => b.period === selectedMonth);
+  // Real Financial calculations
+  const activeBills = bills.filter(b => b.period === selectedMonth || (b.rentalType === 'Harian'));
   const activeExpenses = expenses.filter(e => e.date.startsWith(getMonthKey(selectedMonth)));
 
   const totalRooms = rooms.length;
-  const occupiedRooms = rooms.filter(r => r.status === 'Terisi' || r.status === 'Menunggak').length;
-  const emptyRooms = rooms.filter(r => r.status === 'Kosong').length;
-  const bookedRooms = rooms.filter(r => r.status === 'Booking').length;
-  const repairingRooms = rooms.filter(r => r.status === 'Perbaikan').length;
+  const occupiedHarian = tenants.filter(t => t.guestType === 'Harian' && t.status !== 'Keluar').length;
+  const occupiedBulanan = tenants.filter(t => (t.guestType === 'Bulanan' || !t.guestType) && t.status !== 'Keluar').length;
+  const occupiedTotal = rooms.filter(r => r.status === 'Terisi' || r.status === 'Menunggak').length;
+  const occupancyRate = totalRooms > 0 ? ((occupiedTotal / totalRooms) * 100).toFixed(0) : '0';
 
-  const unpaidBillsCount = activeBills.filter(b => b.status === 'Belum Bayar' || b.status === 'Terlambat' || b.status === 'Sebagian').length;
-  
-  // Financial summaries
+  const emptyRooms = rooms.filter(r => r.status === 'Kosong').length;
+  const dirtyRooms = rooms.filter(r => r.housekeepingStatus === 'Kotor').length;
+
+  // Income calculations - Strictly Real
   const totalIncomeThisMonth = activeBills
     .filter(b => b.status === 'Lunas' || b.status === 'Sebagian')
-    .reduce((sum, b) => sum + b.paidAmount, 0);
+    .reduce((sum, b) => sum + (b.paidAmount || 0), 0);
 
-  const totalExpensesThisMonth = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpensesThisMonth = activeExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   const netEstimatedProfit = totalIncomeThisMonth - totalExpensesThisMonth;
 
-  // Let's filter outstanding tenants for quick reminder
+  // Recent Paid Transactions for "Pembayaran Terbaru" list
+  const recentPaidBills = bills
+    .filter(b => b.status === 'Lunas' || (b.paidAmount && b.paidAmount > 0))
+    .slice(0, 5);
+
+  // Unpaid bills for reminders
   const outstandingBills = activeBills.filter(b => b.status === 'Belum Bayar' || b.status === 'Terlambat' || b.status === 'Sebagian');
-  
-  // Active complaints
-  const activeComplaints = complaints.filter(c => c.status === 'Baru' || c.status === 'Diproses');
-  
-  // Formatting helper
+
+  // Format IDR
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -71,373 +92,413 @@ export function DashboardView({
     }).format(num);
   };
 
+  // Generate 7-day timeline matrix dates
+  const getTimelineDates = () => {
+    const dates = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      const dayName = d.toLocaleDateString('id-ID', { weekday: 'short' });
+      const dateNum = d.getDate();
+      const monthShort = d.toLocaleDateString('id-ID', { month: 'short' });
+      const isToday = i === 0;
+      dates.push({ dayName, dateNum, monthShort, isToday });
+    }
+    return dates;
+  };
+
+  const timelineDates = getTimelineDates();
+
+  const handleQuickCheckInSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRoomForCheckIn || !guestName || !guestPhone) return;
+
+    const targetRoom = rooms.find(r => r.id === selectedRoomForCheckIn || r.number === selectedRoomForCheckIn);
+    if (!targetRoom) return;
+
+    const nights = Math.max(1, Math.ceil(Math.abs(new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24)));
+    const rentAmt = guestType === 'Harian' ? (targetRoom.pricePerDay || 180000) * nights : (targetRoom.pricePerMonth || targetRoom.price);
+
+    const newTenant: Tenant = {
+      id: `guest-quick-${Date.now()}`,
+      name: guestName,
+      phone: guestPhone,
+      email: `${guestName.toLowerCase().replace(/\s+/g, '')}@guest.com`,
+      guestType: guestType,
+      checkInDate: checkInDate,
+      checkOutDate: guestType === 'Harian' ? checkOutDate : undefined,
+      idType: 'KTP',
+      vehicleNumber: vehicleNumber || undefined,
+      totalGuests: totalGuests,
+      bookingOrigin: 'Walk-in',
+      emergencyContact: { name: 'Kerabat', relation: 'Keluarga', phone: guestPhone },
+      idNumber: `KTP-${Date.now()}`,
+      roomAssigned: targetRoom.number,
+      moveInDate: checkInDate,
+      rentAmount: rentAmt,
+      deposit: guestType === 'Harian' ? 100000 : 500000,
+      status: 'Lunas',
+      notes: `Check-in ${guestType} via Dashboard`
+    };
+
+    if (onAddTenant) {
+      onAddTenant(newTenant, targetRoom.id);
+    }
+    setQuickCheckInOpen(false);
+    setGuestName('');
+    setGuestPhone('');
+  };
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-1 sm:px-0">
+    <div className="space-y-6 max-w-7xl mx-auto text-slate-800">
       
-      {/* 1. SEVEN KPI SUMMARY CARDS */}
-      <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
-        {/* KPI 1: Total Kamar */}
-        <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex flex-col justify-between hover:border-slate-300 transition-all">
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-extrabold text-slate-400 tracking-wider">TOTAL KAMAR</span>
-            <span className="p-1 rounded-lg bg-slate-50 text-slate-600"><Building className="h-3.5 w-3.5" /></span>
-          </div>
-          <div className="mt-2.5">
-            <h3 className="text-xl font-extrabold text-slate-900">{totalRooms}</h3>
-            <p className="text-[9px] text-slate-400 mt-0.5">Kapasitas Maksimal</p>
-          </div>
+      {/* 1. TOP HEADER & TITLE ROW */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
+          <p className="text-xs text-slate-500 mt-1">Ringkasan operasional hunian harian & bulanan properti Anda.</p>
         </div>
 
-        {/* KPI 2: Kamar Terisi */}
-        <div 
-          onClick={() => onNavigateToTab('rooms')} 
-          className="p-4 bg-emerald-50/50 hover:bg-emerald-50 border border-emerald-100 rounded-2xl flex flex-col justify-between transition-all cursor-pointer group"
+        {/* Quick Check-in Button */}
+        <button
+          onClick={() => setQuickCheckInOpen(true)}
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
         >
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-extrabold text-emerald-800 tracking-wider">TERISI</span>
-            <span className="p-1 rounded-lg bg-emerald-100 text-emerald-700"><Users className="h-3.5 w-3.5" /></span>
-          </div>
-          <div className="mt-2.5">
-            <h3 className="text-xl font-extrabold text-emerald-950 group-hover:text-emerald-700 transition-colors">{occupiedRooms}</h3>
-            <p className="text-[9px] text-emerald-600 font-medium mt-0.5">Hunian Aktif ({(totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0).toFixed(0)}%)</p>
-          </div>
-        </div>
+          <UserPlus className="h-4 w-4" />
+          <span>Check-In Tamu Cepat</span>
+        </button>
+      </div>
 
-        {/* KPI 3: Kamar Kosong */}
+      {/* 2. TOP KPI CARDS GRID (REAL DATA) */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Card 1: Total Unit */}
         <div 
           onClick={() => onNavigateToTab('rooms')}
-          className="p-4 bg-teal-50/50 hover:bg-teal-50 border border-teal-100 rounded-2xl flex flex-col justify-between transition-all cursor-pointer group"
+          className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs hover:shadow-md transition-all cursor-pointer"
         >
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-extrabold text-teal-800 tracking-wider">KOSONG</span>
-            <span className="p-1 rounded-lg bg-teal-100 text-teal-700"><CheckCircle2 className="h-3.5 w-3.5" /></span>
-          </div>
-          <div className="mt-2.5">
-            <h3 className="text-xl font-extrabold text-teal-950 group-hover:text-teal-700 transition-colors">{emptyRooms}</h3>
-            <p className="text-[9px] text-teal-600 font-medium mt-0.5">Siap Pasarkan ✓</p>
+          <span className="text-xs font-semibold text-slate-400 block mb-2">Total Unit</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">{totalRooms}</span>
+            <span className="text-xs font-bold text-slate-400">Unit</span>
           </div>
         </div>
 
-        {/* KPI 4: Belum Bayar */}
+        {/* Card 2: Terisi */}
         <div 
-          onClick={() => onNavigateToTab('bills')}
-          className={`p-4 border rounded-2xl flex flex-col justify-between transition-all cursor-pointer group ${
-            unpaidBillsCount > 0 
-              ? 'bg-rose-50 border-rose-200 hover:bg-rose-100/70 animate-pulse-slow' 
-              : 'bg-white border-slate-200'
-          }`}
+          onClick={() => onNavigateToTab('rooms')}
+          className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs hover:shadow-md transition-all cursor-pointer"
         >
-          <div className="flex justify-between items-center">
-            <span className={`text-[10px] font-extrabold tracking-wider ${unpaidBillsCount > 0 ? 'text-rose-800' : 'text-slate-400'}`}>TUNGGAKAN</span>
-            <span className={`p-1 rounded-lg ${unpaidBillsCount > 0 ? 'bg-rose-200 text-rose-700' : 'bg-slate-50 text-slate-500'}`}><AlertCircle className="h-3.5 w-3.5" /></span>
-          </div>
-          <div className="mt-2.5">
-            <h3 className={`text-xl font-extrabold ${unpaidBillsCount > 0 ? 'text-rose-950' : 'text-slate-900'}`}>{unpaidBillsCount} Kamar</h3>
-            <p className="text-[9px] text-rose-600 font-bold mt-0.5">Perlu Reminder WhatsApp</p>
+          <span className="text-xs font-semibold text-slate-400 block mb-2">Terisi</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">{occupiedTotal}</span>
+            <span className="text-xs font-bold text-slate-400">Unit</span>
           </div>
         </div>
 
-        {/* KPI 5: Pemasukan Bulan Ini */}
-        <div className="p-4 bg-white border border-slate-200 rounded-2xl flex flex-col justify-between hover:border-slate-300 transition-all col-span-1">
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-extrabold text-slate-400 tracking-wider">PEMASUKAN</span>
-            <span className="p-1 rounded-lg bg-emerald-50 text-emerald-600"><TrendingUp className="h-3.5 w-3.5" /></span>
+        {/* Card 3: Tingkat Hunian */}
+        <div 
+          onClick={() => onNavigateToTab('reports')}
+          className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs hover:shadow-md transition-all cursor-pointer"
+        >
+          <span className="text-xs font-semibold text-slate-400 block mb-2">Tingkat Hunian</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">{occupancyRate}%</span>
           </div>
-          <div className="mt-2.5">
-            <h3 className="text-sm font-extrabold text-slate-950 truncate">{formatIDR(totalIncomeThisMonth)}</h3>
-            <p className="text-[9px] text-slate-400 mt-0.5">Dana masuk {selectedMonth}</p>
+          <span className="text-[10px] font-medium text-slate-400 block mt-1">Dari total unit</span>
+        </div>
+
+        {/* Card 4: Pendapatan Bulan Ini */}
+        <div 
+          onClick={() => onNavigateToTab('reports')}
+          className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs hover:shadow-md transition-all cursor-pointer"
+        >
+          <span className="text-xs font-semibold text-slate-400 block mb-2">Pendapatan Bulan Ini</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">{formatIDR(totalIncomeThisMonth)}</span>
+          </div>
+          <div className="mt-1 flex items-center gap-1">
+            <span className="text-[10px] font-medium text-slate-400">Total transaksi terbayar</span>
           </div>
         </div>
 
-        {/* KPI 6: Pengeluaran */}
-        <div className="p-4 bg-white border border-slate-200 rounded-2xl flex flex-col justify-between hover:border-slate-300 transition-all col-span-1">
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-extrabold text-slate-400 tracking-wider">BIAYA OPERASIONAL</span>
-            <span className="p-1 rounded-lg bg-rose-50 text-rose-600"><TrendingDown className="h-3.5 w-3.5" /></span>
-          </div>
-          <div className="mt-2.5">
-            <h3 className="text-sm font-extrabold text-slate-950 truncate">{formatIDR(totalExpensesThisMonth)}</h3>
-            <p className="text-[9px] text-slate-400 mt-0.5">Operasional {selectedMonth}</p>
-          </div>
-        </div>
-
-        {/* KPI 7: Estimasi Profit */}
-        <div className={`p-4 border rounded-2xl flex flex-col justify-between transition-all ${
-          netEstimatedProfit > 0 ? 'bg-teal-900 text-white border-teal-800' : 'bg-slate-900 text-white border-slate-800'
-        }`}>
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-extrabold text-teal-300 tracking-wider">LABA BERSIH</span>
-            <span className="p-1 rounded-lg bg-teal-800 text-teal-300"><Landmark className="h-3.5 w-3.5" /></span>
-          </div>
-          <div className="mt-2.5">
-            <h3 className="text-sm font-black truncate text-teal-100">{formatIDR(netEstimatedProfit)}</h3>
-            <p className="text-[9px] text-teal-300 mt-0.5">Est. Bersih {selectedMonth}</p>
-          </div>
-        </div>
       </section>
 
-      {/* 2. DUAL-COLUMN CONTENT LAYOUT */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* 3. DUAL COLUMN MAIN DASHBOARD CONTENT */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* LEFT COLUMN (8/12 length): Room Visual Grid & Income Breakdown */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          {/* Room Visual Grid Widget */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">Status Peta Kamar (Grid Visual)</h3>
-                <p className="text-[10px] text-slate-400">Peta ketersediaan kamar pada Kost Anda secara instan.</p>
-              </div>
-              <button 
-                onClick={() => onNavigateToTab('rooms')} 
-                className="text-[10px] text-teal-600 hover:text-teal-700 font-bold flex items-center gap-0.5 cursor-pointer hover:underline"
-              >
-                Lihat Detail Kamar <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            {/* Custom Interactive Legend */}
-            <div className="flex flex-wrap gap-2.5 pb-4 mb-4 border-b border-dashed border-slate-100 text-[10px] font-semibold text-slate-500">
-              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-emerald-500"></span>Terisi</span>
-              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-slate-300"></span>Kosong</span>
-              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-amber-400"></span>Booking</span>
-              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-orange-400"></span>Perbaikan</span>
-              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-rose-500 animate-pulse"></span>Menunggak</span>
-            </div>
-
-            <div className="grid grid-cols-2 xs:grid-cols-4 sm:grid-cols-6 gap-3">
-              {rooms.map((room) => {
-                let statusBg = '';
-                let statusText = '';
-                let borderStyle = 'border-slate-100 hover:border-slate-300';
-                
-                // Switch styling based on status
-                switch (room.status) {
-                  case 'Terisi':
-                    statusBg = 'bg-emerald-500 text-white';
-                    statusText = 'Terisi - ' + (tenants.find(t => t.id === room.tenantId)?.name.split(' ')[0] || 'Nama');
-                    break;
-                  case 'Kosong':
-                    statusBg = 'bg-slate-100 text-slate-600';
-                    statusText = 'Kosong';
-                    break;
-                  case 'Booking':
-                    statusBg = 'bg-amber-400 text-amber-950';
-                    statusText = 'Booked';
-                    break;
-                  case 'Perbaikan':
-                    statusBg = 'bg-orange-400 text-white';
-                    statusText = 'Reparasi';
-                    break;
-                  case 'Menunggak':
-                    statusBg = 'bg-rose-500 text-white animate-pulse-slow';
-                    statusText = 'Menunggak ⚠️';
-                    break;
-                }
-
-                return (
-                  <div 
-                    key={room.id}
-                    onClick={() => onNavigateToTab('rooms', room.id)}
-                    className="p-3 bg-slate-50/50 hover:bg-slate-50 border border-slate-200/60 rounded-2xl cursor-pointer transition-all hover:translate-y-[-1px] flex flex-col justify-between min-h-[96px]"
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-black text-slate-800">Kmr {room.number}</span>
-                      <span className="text-[8px] text-slate-400 font-bold bg-slate-100 px-1.5 py-0.5 rounded">Floor {room.floor}</span>
-                    </div>
-
-                    <div className="mt-3">
-                      <span className={`block w-full py-1 px-1.5 rounded-lg text-center font-bold text-[9px] tracking-tight truncate ${statusBg}`}>
-                        {statusText}
-                      </span>
-                    </div>
-
-                    <p className="text-[8px] text-slate-400 text-right mt-1 font-mono font-bold">
-                      {formatIDR(room.price / 1000)}k/bln
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
+        {/* LEFT COLUMN (7/12 Width): Ringkasan Pendapatan Chart Card */}
+        <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-base font-extrabold text-slate-900">Ringkasan Pendapatan</h3>
+            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">{new Date().getFullYear()}</span>
           </div>
 
-          {/* Recents Payments Activity */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-            <h3 className="text-sm font-extrabold text-slate-900 mb-3 tracking-tight">Riwayat Pembayaran Terbaru Bulan Ini</h3>
-            
-            {activeBills.filter(b => b.status === 'Lunas').length === 0 ? (
-              <div className="p-6 text-center border border-slate-100 rounded-2xl bg-slate-50/30">
-                <p className="text-xs text-slate-400 italic">Belum ada pembayaran lunas tercatat untuk periode ini.</p>
+          {/* SVG Line Chart / Real Data Indicator */}
+          <div className="w-full bg-slate-50/50 rounded-xl p-4 border border-slate-100 min-h-[220px] flex flex-col justify-center items-center">
+            {totalIncomeThisMonth === 0 && totalExpensesThisMonth === 0 ? (
+              <div className="text-center space-y-2 py-8">
+                <Inbox className="h-10 w-10 text-slate-300 mx-auto" />
+                <p className="text-xs font-bold text-slate-500">Belum Ada Transaksi Keuangan</p>
+                <p className="text-[10px] text-slate-400">Grafik otomatis terbentuk setelah ada pembayaran tagihan atau pengeluaran.</p>
               </div>
             ) : (
-              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
-                {activeBills.filter(b => b.status === 'Lunas').map((b, idx) => (
-                  <div key={idx} className="p-3 border border-slate-100 rounded-xl bg-slate-50/50 flex justify-between items-center text-xs">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xs">✓</div>
-                      <div>
-                        <p className="font-bold text-slate-800">{b.tenantName} (Kamar {b.roomNumber})</p>
-                        <p className="text-[9px] text-slate-400">Lunas via {b.paymentMethod || 'Tunai'} • {b.paymentDate}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-extrabold text-teal-700">{formatIDR(b.paidAmount)}</p>
-                      <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1 px-1.5 rounded-full uppercase">Berhasil</span>
-                    </div>
-                  </div>
-                ))}
+              <div className="w-full">
+                <div className="h-44 relative flex items-end">
+                  <svg viewBox="0 0 400 160" className="w-full h-full stroke-2 fill-none overflow-visible">
+                    <line x1="0" y1="20" x2="400" y2="20" stroke="#f1f5f9" strokeDasharray="4" />
+                    <line x1="0" y1="60" x2="400" y2="60" stroke="#f1f5f9" strokeDasharray="4" />
+                    <line x1="0" y1="100" x2="400" y2="100" stroke="#f1f5f9" strokeDasharray="4" />
+                    <line x1="0" y1="140" x2="400" y2="140" stroke="#f1f5f9" strokeDasharray="4" />
+
+                    <path 
+                      d="M 20,140 C 140,140 200,100 380,40" 
+                      stroke="#2563eb" 
+                      strokeWidth="3.5" 
+                      strokeLinecap="round" 
+                    />
+                    <circle cx="380" cy="40" r="5" fill="#ffffff" stroke="#2563eb" strokeWidth="3" />
+                  </svg>
+                </div>
+                <div className="flex justify-between text-[11px] font-bold text-slate-400 pt-3 border-t border-slate-200/60">
+                  <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>Mei</span><span>Jun</span><span>Jul</span>
+                </div>
               </div>
             )}
+          </div>
+
+          {/* Chart Legend */}
+          <div className="flex justify-center items-center gap-6 pt-1 text-xs font-bold text-slate-600">
+            <span className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-blue-600"></span> Pendapatan ({formatIDR(totalIncomeThisMonth)})
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-sky-400"></span> Pengeluaran ({formatIDR(totalExpensesThisMonth)})
+            </span>
           </div>
         </div>
 
-        {/* RIGHT COLUMN (4/12 length): Overdue List & Active Complaints */}
-        <div className="lg:col-span-4 space-y-6">
-          
-          {/* Unpaid / Outstanding Bills reminders widget */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-            <div className="flex justify-between items-center mb-3">
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">Tunggakan Belum Lunas</h3>
-                <span className="text-[9px] text-rose-500 font-extrabold bg-rose-50 px-2 py-0.5 rounded-full mt-1 inline-block">Sedia Template WhatsApp</span>
-              </div>
-            </div>
+        {/* RIGHT COLUMN (5/12 Width): Pembayaran Terbaru List Card */}
+        <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between space-y-4">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h3 className="text-base font-extrabold text-slate-900">Pembayaran Terbaru</h3>
+            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+              Real-time
+            </span>
+          </div>
 
-            {outstandingBills.length === 0 ? (
-              <div className="p-8 text-center border border-slate-100 rounded-2xl bg-slate-50">
-                <span className="text-2xl">🎉</span>
-                <p className="text-xs font-bold text-emerald-900 mt-2">Semua Tagihan Lunas!</p>
-                <p className="text-[10px] text-slate-400 mt-1">Sangat rapi, tidak ada tunggakan sewa.</p>
+          {/* Real Payments Item List */}
+          <div className="space-y-3.5 flex-1 flex flex-col justify-center">
+            {recentPaidBills.length === 0 ? (
+              <div className="p-8 text-center space-y-2">
+                <Inbox className="h-8 w-8 text-slate-300 mx-auto" />
+                <p className="text-xs font-bold text-slate-500">Belum Ada Transaksi Pembayaran</p>
+                <p className="text-[10px] text-slate-400">Transaksi lunas terbaru akan tampil otomatis di sini.</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {outstandingBills.map((b) => (
-                  <div key={b.id} className="p-3 border border-slate-200/80 rounded-2xl bg-slate-50/50 space-y-2.5">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-bold text-slate-800 text-xs truncate max-w-[170px]">{b.tenantName}</p>
-                        <p className="text-[9px] text-slate-400 font-semibold font-mono">Kamar {b.roomNumber} • Due {b.dueDate}</p>
-                      </div>
-                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
-                        b.status === 'Terlambat' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {b.status}
-                      </span>
+              recentPaidBills.map((b) => (
+                <div key={b.id} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs shrink-0 border border-blue-100">
+                      <Building className="h-5 w-5" />
                     </div>
-
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-200/50 text-xs">
-                      <div>
-                        <p className="text-[9px] text-slate-400 font-medium">Sisa Tagihan:</p>
-                        <p className="font-black text-slate-900">{formatIDR(b.totalAmount - b.paidAmount)}</p>
-                      </div>
-
-                      <div className="flex gap-1">
-                        <button 
-                          onClick={() => onOpenPaymentForm(b)}
-                          className="bg-teal-600 hover:bg-teal-700 text-white text-[10px] py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer"
-                        >
-                          Bayar
-                        </button>
-                        <button 
-                          onClick={() => onOpenReminderModal(b)}
-                          className="bg-slate-900 hover:bg-slate-800 text-white text-[10px] py-1.5 px-2 rounded-lg font-bold flex items-center gap-1 transition-all cursor-pointer"
-                          title="Kirim template WA"
-                        >
-                          <MessageSquare className="h-3 w-3" /> WA
-                        </button>
-                      </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-slate-900 leading-snug">Kamar {b.roomNumber}</h4>
+                      <p className="text-[10px] text-slate-400 font-medium">{b.tenantName}</p>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <div className="flex items-center gap-2 text-right">
+                    <span className="text-xs font-black text-slate-900 font-mono">{formatIDR(b.paidAmount || b.totalAmount)}</span>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-700">
+                      Lunas
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
 
-          {/* Active Complaints Widget */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">Daftar Komplain Penyewa ({activeComplaints.length})</h3>
-              <button 
-                onClick={() => onNavigateToTab('complaints')}
-                className="text-[9px] text-teal-600 hover:underline font-bold"
-              >
-                Urus Komplain
-              </button>
-            </div>
-
-            {activeComplaints.length === 0 ? (
-              <div className="py-6 text-center border border-slate-100 rounded-2xl bg-emerald-50/20">
-                <span className="text-base text-emerald-600">✓</span>
-                <p className="text-xs font-semibold text-slate-500 mt-1">Semua komplain teratasi</p>
-                <p className="text-[10px] text-slate-400">Kondisi kos terpantau nyaman.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {activeComplaints.map((c) => (
-                  <div key={c.id} className="p-2.5 border border-slate-100 rounded-xl bg-slate-50 flex items-start gap-2.5">
-                    <span className="text-xs p-1.5 rounded-lg bg-orange-100 text-orange-800 font-bold shrink-0">🛠️</span>
-                    <div className="translate-y-[-1px] flex-1 min-w-0">
-                      <div className="flex justify-between items-start gap-1">
-                        <p className="font-bold text-xs text-slate-800 truncate">{c.title}</p>
-                        <span className={`text-[7px] font-black uppercase px-1 rounded ${
-                          c.priority === 'Tinggi' ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'
-                        }`}>
-                          {c.priority}
-                        </span>
-                      </div>
-                      <p className="text-[9px] text-slate-400 font-semibold">Anak Kost: {c.tenantName} (No {c.roomNumber})</p>
-                      <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">{c.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Footer View All Link */}
+          <div className="pt-2 border-t border-slate-100 flex justify-end">
+            <button
+              onClick={() => onNavigateToTab('bills')}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer transition-all"
+            >
+              Lihat semua <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
-
-          {/* Quick Stats Cashflow breakdown */}
-          <div className="bg-slate-900 text-white p-5 rounded-3xl relative overflow-hidden">
-            <span className="absolute right-[-20px] bottom-[-20px] text-7xl opacity-5 pointer-events-none">💰</span>
-            <h4 className="text-xs font-bold text-teal-400 uppercase tracking-widest mb-3">Pola Cashflow {selectedMonth}</h4>
-            
-            <div className="space-y-2 text-xs">
-              <div>
-                <div className="flex justify-between text-[11px] mb-1">
-                  <span className="text-slate-400">Rasio Pengeluaran vs Pendapatan:</span>
-                  <span className="font-extrabold text-rose-400">
-                    {totalIncomeThisMonth > 0 ? ((totalExpensesThisMonth / totalIncomeThisMonth) * 100).toFixed(0) : 0}%
-                  </span>
-                </div>
-                {/* CSS Bar Chart */}
-                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex">
-                  <div 
-                    style={{ width: `${totalIncomeThisMonth > 0 ? Math.min(100, (totalIncomeThisMonth / (totalIncomeThisMonth + totalExpensesThisMonth)) * 100) : 50}%` }} 
-                    className="bg-teal-500"
-                    title="Pemasukan"
-                  ></div>
-                  <div 
-                    style={{ width: `${totalExpensesThisMonth > 0 ? Math.min(100, (totalExpensesThisMonth / (totalIncomeThisMonth + totalExpensesThisMonth)) * 100) : 50}%` }} 
-                    className="bg-rose-500"
-                    title="Pengeluaran"
-                  ></div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-800 text-[10px]">
-                <div className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-teal-500"></span>
-                  <span className="text-slate-400">Pemasukan (Lunas)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-rose-500"></span>
-                  <span className="text-slate-400">Pengeluaran</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
-      </div>
+
+      </section>
+
+      {/* 4. VISUAL DAILY BOOKING AVAILABILITY MATRIX / GRID */}
+      <section className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900">Timeline Ketersediaan Booking Kamar (7 Hari Ke Depan)</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Pantau status kamar terisi harian, sewa bulanan, dan jadwal turnover.</p>
+          </div>
+
+          <div className="flex items-center gap-3 text-[10px] font-bold">
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-600"></span> Stay Harian</span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-600"></span> Bulanan</span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-slate-200"></span> Kosong</span>
+          </div>
+        </div>
+
+        {/* Interactive Grid Table */}
+        {rooms.length === 0 ? (
+          <div className="p-12 border border-slate-200 rounded-xl text-center space-y-3 bg-slate-50/50">
+            <Building className="h-10 w-10 text-slate-300 mx-auto" />
+            <p className="text-xs font-bold text-slate-600">Belum Ada Kamar Terdaftar</p>
+            <p className="text-[10px] text-slate-400 max-w-sm mx-auto">
+              Silakan tambahkan kamar baru di menu <strong>Unit</strong> untuk mulai mengelola ketersediaan & booking.
+            </p>
+            <button
+              onClick={() => onNavigateToTab('rooms')}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
+            >
+              + Tambah Unit Kamar Pertama
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto border border-slate-200/80 rounded-xl">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-700 font-extrabold border-b border-slate-200">
+                  <th className="p-3 w-32 border-r border-slate-200">Kamar</th>
+                  {timelineDates.map((td, idx) => (
+                    <th key={idx} className={`p-2.5 text-center border-r border-slate-200 min-w-[85px] ${td.isToday ? 'bg-blue-50 text-blue-900' : ''}`}>
+                      <span className="block text-[10px] uppercase font-bold text-slate-400">{td.dayName}</span>
+                      <span className="text-sm font-black">{td.dateNum} {td.monthShort}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-xs">
+                {rooms.map(room => {
+                  const assignedTenant = tenants.find(t => t.id === room.tenantId || t.roomAssigned === room.number);
+                  const isHarian = assignedTenant?.guestType === 'Harian';
+
+                  return (
+                    <tr key={room.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="p-3 font-bold border-r border-slate-200 bg-slate-50/30">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-slate-900">Kmr {room.number}</span>
+                          {room.housekeepingStatus === 'Kotor' && (
+                            <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1 rounded">Kotor</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {timelineDates.map((td, idx) => {
+                        let cellColor = 'bg-slate-50 text-slate-400';
+                        let cellLabel = 'Kosong';
+
+                        if (room.status === 'Terisi' || room.status === 'Menunggak') {
+                          if (isHarian) {
+                            cellColor = 'bg-blue-600 text-white font-bold';
+                            cellLabel = `Harian (${assignedTenant?.name.split(' ')[0] || 'Tamu'})`;
+                          } else {
+                            cellColor = 'bg-emerald-600 text-white font-bold';
+                            cellLabel = `Bulanan (${assignedTenant?.name.split(' ')[0] || 'Sewa'})`;
+                          }
+                        }
+
+                        return (
+                          <td key={idx} className="p-1.5 border-r border-slate-200 text-center">
+                            <div 
+                              onClick={() => onNavigateToTab('rooms', room.id)}
+                              className={`p-2 rounded-lg text-[10px] leading-tight cursor-pointer transition-all hover:scale-95 ${cellColor}`}
+                            >
+                              <span className="block truncate max-w-[75px]">{cellLabel}</span>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* QUICK CHECK-IN MODAL FORM OVERLAY */}
+      {quickCheckInOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg border border-slate-200 shadow-2xl overflow-hidden">
+            <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-blue-400" />
+                <span className="font-extrabold text-base">Quick Check-In Tamu</span>
+              </div>
+              <button onClick={() => setQuickCheckInOpen(false)} className="p-1 text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form onSubmit={handleQuickCheckInSubmit} className="p-6 space-y-4 text-xs font-medium">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Pilih Kamar Ready *</label>
+                <select
+                  required
+                  value={selectedRoomForCheckIn}
+                  onChange={(e) => setSelectedRoomForCheckIn(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold"
+                >
+                  <option value="">-- Pilih Kamar --</option>
+                  {rooms.map(r => (
+                    <option key={r.id} value={r.id}>
+                      Kmr {r.number} ({r.type}) • Rp {r.pricePerDay?.toLocaleString('id-ID') || '180.000'}/hari
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Nama Lengkap Tamu *</label>
+                  <input
+                    type="text"
+                    required
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Nomor WhatsApp *</label>
+                  <input
+                    type="text"
+                    required
+                    value={guestPhone}
+                    onChange={(e) => setGuestPhone(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setQuickCheckInOpen(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md cursor-pointer"
+                >
+                  Proses Check-In
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

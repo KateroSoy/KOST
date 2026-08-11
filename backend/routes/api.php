@@ -9,6 +9,7 @@ use App\Http\Controllers\PublicController;
 use App\Http\Controllers\RestoreController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\SuperAdminController;
 use App\Http\Controllers\TenantController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me',               [AuthController::class, 'me']);
     Route::post('/auth/logout',          [AuthController::class, 'logout']);
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+
+    // Super Admin Routes (SaaS Platform Management)
+    Route::get('/admin/metrics',           [SuperAdminController::class, 'metrics']);
+    Route::get('/admin/users',             [SuperAdminController::class, 'users']);
+    Route::patch('/admin/users/{id}/status', [SuperAdminController::class, 'updateStatus']);
+    Route::patch('/admin/users/{id}/plan',   [SuperAdminController::class, 'updatePlan']);
+    Route::delete('/admin/users/{id}',     [SuperAdminController::class, 'destroy']);
 
     // Rooms
     Route::get('/rooms',            [RoomController::class, 'index']);

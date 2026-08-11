@@ -42,7 +42,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Register a new owner account.
+     * Register a new property owner account (SaaS Customer).
      */
     public function register(Request $request)
     {
@@ -60,6 +60,9 @@ class AuthController extends Controller
             'name'     => $request->name,
             'phone'    => $request->phone,
             'slug'     => $slug,
+            'role'     => 'owner',
+            'status'   => 'active',
+            'plan'     => 'pro',
             'email'    => $request->email ?? null,
             'password' => Hash::make($request->password),
         ]);
@@ -89,16 +92,19 @@ class AuthController extends Controller
         return response()->json([
             'token' => $token,
             'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'phone' => $user->phone,
-                'slug'  => $user->slug,
+                'id'     => $user->id,
+                'name'   => $user->name,
+                'phone'  => $user->phone,
+                'slug'   => $user->slug,
+                'role'   => $user->role ?? 'owner',
+                'status' => $user->status ?? 'active',
+                'plan'   => $user->plan ?? 'pro',
             ],
         ], 201);
     }
 
     /**
-     * Login an existing owner account.
+     * Login an existing account (Super Admin or Property Owner).
      */
     public function login(Request $request)
     {
@@ -111,8 +117,14 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'phone' => ['Nomor atau kata sandi salah.'],
+                'phone' => ['Nomor WhatsApp atau kata sandi salah.'],
             ]);
+        }
+
+        if (($user->status ?? 'active') === 'suspended') {
+            return response()->json([
+                'error' => 'Akun Anda sedang ditangguhkan oleh Administrator SaaS. Silakan hubungi dukungan pelanggan.'
+            ], 403);
         }
 
         $user->tokens()->delete();
@@ -121,10 +133,13 @@ class AuthController extends Controller
         return response()->json([
             'token' => $token,
             'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'phone' => $user->phone,
-                'slug'  => $user->slug,
+                'id'     => $user->id,
+                'name'   => $user->name,
+                'phone'  => $user->phone,
+                'slug'   => $user->slug,
+                'role'   => $user->role ?? 'owner',
+                'status' => $user->status ?? 'active',
+                'plan'   => $user->plan ?? 'pro',
             ],
         ]);
     }
@@ -145,11 +160,14 @@ class AuthController extends Controller
     {
         $user = $request->user();
         return response()->json([
-            'id'    => $user->id,
-            'name'  => $user->name,
-            'phone' => $user->phone,
-            'slug'  => $user->slug,
-            'email' => $user->email,
+            'id'     => $user->id,
+            'name'   => $user->name,
+            'phone'  => $user->phone,
+            'slug'   => $user->slug,
+            'role'   => $user->role ?? 'owner',
+            'status' => $user->status ?? 'active',
+            'plan'   => $user->plan ?? 'pro',
+            'email'  => $user->email,
         ]);
     }
 

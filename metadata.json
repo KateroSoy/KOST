@@ -1,6 +1,6 @@
 {
-  "name": "Kostos",
-  "description": "Aplikasi manajemen kost praktis untuk mengelola kamar, penghuni, tagihan, pengeluaran, dan komplain.",
+  "name": "StayFlow",
+  "description": "Aplikasi manajemen penginapan harian dan kost bulanan untuk mengelola unit, tamu/penghuni, tagihan, pengeluaran, dan maintenance.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

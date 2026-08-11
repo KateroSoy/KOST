@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Room, Tenant, Bill, Expense, Complaint, KostSettings, Property, ComplaintStatus, RoomStatus, TenantStatus, HousekeepingStatus } from './types';
+import { Room, Tenant, Bill, Expense, Complaint, KostSettings, Property, ComplaintStatus, RoomStatus, TenantStatus, HousekeepingStatus, UserRole } from './types';
 import { 
   INITIAL_SETTINGS, 
   INITIAL_ROOMS, 
@@ -25,12 +25,18 @@ import { ExpensesView } from './components/ExpensesView';
 import { ComplaintsView } from './components/ComplaintsView';
 import { ReportsView } from './components/ReportsView';
 import { SettingsView } from './components/SettingsView';
+import { SuperAdminView } from './components/SuperAdminView';
 import { WhatsAppReminderModal } from './components/WhatsAppReminderModal';
 
 export default function App() {
   
   // Authorization State: 'landing' | 'login' | 'register' | 'onboarding' | 'dashboard'
   const [authMode, setAuthMode] = useState<'landing' | 'login' | 'register' | 'onboarding' | 'dashboard'>('landing');
+
+  // User Role State: 'super_admin' | 'owner'
+  const [userRole, setUserRole] = useState<UserRole>(() => {
+    return (localStorage.getItem('kostos_user_role') as UserRole) || 'owner';
+  });
 
   // Demo Mode: true when user clicks "Try Demo" without registering
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
@@ -105,6 +111,11 @@ export default function App() {
     // Token-based auto-login
     if (getToken()) {
       setAuthMode('dashboard');
+      const savedRole = localStorage.getItem('kostos_user_role');
+      if (savedRole === 'super_admin') {
+        setUserRole('super_admin');
+        setSelectedTab('super_admin');
+      }
     }
 
     fetchAllData().then((data) => {
@@ -486,6 +497,8 @@ export default function App() {
     setProperties(INITIAL_PROPERTIES);
     setPublicOwnerData(null);
     setIsDemoMode(false);
+    setUserRole('owner');
+    setSelectedTab('dashboard');
     setAuthMode('landing');
   };
 
@@ -573,6 +586,15 @@ export default function App() {
   // 7. MULTIPLEXING TAB ROUTING LAYOUTS
   const renderTabContent = () => {
     switch (selectedTab) {
+      case 'super_admin':
+        return (
+          <SuperAdminView 
+            onOpenOwnerLandingPage={(slug) => {
+              window.open(`/?owner=${slug}`, '_blank');
+            }} 
+          />
+        );
+
       case 'dashboard':
         return (
           <DashboardView 
@@ -801,6 +823,7 @@ export default function App() {
         properties={properties}
         selectedPropertyId={selectedPropertyId}
         onViewGuestPortal={() => setAuthMode('landing')}
+        userRole={userRole}
       />
 
       {/* 2. MAIN WORKING CANVAS WRAPPER */}

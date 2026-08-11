@@ -154,7 +154,7 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
         {/* Metric 3: Rekomedasi efisiensi */}
         <div className="bg-slate-900 text-teal-100 p-5 rounded-3xl relative overflow-hidden">
           <span className="absolute right-[-10px] top-[-10px] text-white opacity-5 text-6xl font-black">💡</span>
-          <span className="text-[10px] text-teal-400 font-bold uppercase tracking-wider block">Tips Efisensi Kostos</span>
+          <span className="text-[10px] text-teal-400 font-bold uppercase tracking-wider block">Tips Efisiensi StayFlow</span>
           <p className="text-[11px] text-slate-300 mt-1.5 leading-relaxed font-medium">
             Service AC secara berkala {selectedMonth} terbukti mengurangi beban tagihan listrik token kost hingga 15%.
           </p>

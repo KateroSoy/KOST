@@ -74,6 +74,9 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
       if (result.user?.slug) {
         localStorage.setItem('kostos_owner_slug', result.user.slug);
       }
+      if (result.user?.role) {
+        localStorage.setItem('kostos_user_role', result.user.role);
+      }
       onSetViewMode('dashboard');
     } catch (err: any) {
       setLoginError(err.message || 'Nomor atau kata sandi salah!');
@@ -104,6 +107,9 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
       setToken(result.token);
       if (result.user?.slug) {
         localStorage.setItem('kostos_owner_slug', result.user.slug);
+      }
+      if (result.user?.role) {
+        localStorage.setItem('kostos_user_role', result.user.role);
       }
       // Pre-fill onboarding with register data then go to onboarding for extra config
       setObOwnerName(regName);

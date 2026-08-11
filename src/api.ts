@@ -1,4 +1,4 @@
-import { Room, Tenant, Bill, Expense, Complaint, KostSettings, Property } from './types';
+import { Room, Tenant, Bill, Expense, Complaint, KostSettings, Property, SuperAdminMetrics, TenantAccount } from './types';
 import { 
   INITIAL_SETTINGS, 
   INITIAL_ROOMS, 
@@ -25,6 +25,7 @@ export const clearToken = () => {
   localStorage.removeItem('kostos_properties');
   localStorage.removeItem('kostos_logged_in');
   localStorage.removeItem('kostos_selected_property');
+  localStorage.removeItem('kostos_user_role');
 };
 
 // ─── Fetch with auth headers & timeout ───────────────────────────────────────
@@ -70,7 +71,15 @@ export let isOfflineMode = false;
 
 export interface AuthResult {
   token: string;
-  user: { id: number; name: string; phone: string; slug?: string };
+  user: {
+    id: number;
+    name: string;
+    phone: string;
+    slug?: string;
+    role?: 'super_admin' | 'owner';
+    status?: 'active' | 'suspended';
+    plan?: 'basic' | 'pro';
+  };
 }
 
 export const authRegister = async (params: {
@@ -101,7 +110,7 @@ export const authLogin = async (params: {
   });
   const data = await parseJsonResponse(res);
   if (!res.ok) {
-    throw new Error(data?.message || (data?.errors ? Object.values(data.errors).flat().join(', ') : 'Login gagal'));
+    throw new Error(data?.error || data?.message || (data?.errors ? Object.values(data.errors).flat().join(', ') : 'Login gagal'));
   }
   return data;
 };
@@ -122,6 +131,58 @@ export const authChangePassword = async (params: {
   const data = await parseJsonResponse(res);
   if (!res.ok) {
     throw new Error(data?.message || (data?.errors ? Object.values(data.errors).flat().join(', ') : 'Gagal mengubah kata sandi'));
+  }
+};
+
+// ─── Super Admin API Calls ───────────────────────────────────────────────────
+
+export const fetchAdminMetrics = async (): Promise<SuperAdminMetrics> => {
+  const res = await fetchWithAuth('/api/admin/metrics');
+  const data = await parseJsonResponse(res);
+  if (!res.ok) {
+    throw new Error(data?.error || 'Gagal mengambil metrik Super Admin');
+  }
+  return data;
+};
+
+export const fetchAdminUsers = async (): Promise<TenantAccount[]> => {
+  const res = await fetchWithAuth('/api/admin/users');
+  const data = await parseJsonResponse(res);
+  if (!res.ok) {
+    throw new Error(data?.error || 'Gagal mengambil daftar akun pengguna SaaS');
+  }
+  return data;
+};
+
+export const updateAdminUserStatus = async (id: number, status: 'active' | 'suspended'): Promise<void> => {
+  const res = await fetchWithAuth(`/api/admin/users/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) {
+    const data = await parseJsonResponse(res);
+    throw new Error(data?.error || 'Gagal memperbarui status akun');
+  }
+};
+
+export const updateAdminUserPlan = async (id: number, plan: 'basic' | 'pro'): Promise<void> => {
+  const res = await fetchWithAuth(`/api/admin/users/${id}/plan`, {
+    method: 'PATCH',
+    body: JSON.stringify({ plan }),
+  });
+  if (!res.ok) {
+    const data = await parseJsonResponse(res);
+    throw new Error(data?.error || 'Gagal memperbarui paket langganan');
+  }
+};
+
+export const deleteAdminUser = async (id: number): Promise<void> => {
+  const res = await fetchWithAuth(`/api/admin/users/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const data = await parseJsonResponse(res);
+    throw new Error(data?.error || 'Gagal menghapus akun pengguna');
   }
 };
 
