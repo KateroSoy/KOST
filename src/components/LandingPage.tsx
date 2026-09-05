@@ -223,62 +223,62 @@ export function LandingPage({
         <main className="flex-1 flex flex-col">
           
           {/* HERO PORTAL BANNER */}
-          <section className="relative overflow-hidden bg-gradient-to-b from-teal-950 via-slate-900 to-slate-950 text-white pt-12 pb-20 px-4 sm:px-6 lg:px-8">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-teal-500/10 blur-3xl pointer-events-none rounded-full" />
-
-            <div className="max-w-5xl mx-auto text-center relative z-10 space-y-4">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 backdrop-blur-md">
-                <Sparkles className="h-4 w-4 text-amber-400 animate-pulse" /> 
-                <span>{isOwnerCatalog ? `Katalog Penginapan Resmi ${settings.kostName}` : 'Beranda Calon Penginap • Cari & Sewa Tempat Penginapan Terbaik'}</span>
+          <section className="relative overflow-hidden bg-gradient-to-br from-teal-950 via-teal-900 to-slate-900 text-white pt-20 pb-28 px-4 sm:px-6 lg:px-8 font-display">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-teal-500/20 blur-[100px] pointer-events-none rounded-full" />
+            
+            <div className="max-w-5xl mx-auto text-center relative z-10 space-y-6 animate-fade-in-up">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white/10 text-teal-100 border border-white/20 backdrop-blur-md shadow-lg shadow-teal-500/10">
+                <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" /> 
+                <span>{isOwnerCatalog ? `Katalog Penginapan Resmi ${settings.kostName}` : 'Hunian Nyaman, Harga Transparan'}</span>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight text-white leading-[1.1]">
                 {isOwnerCatalog ? (
-                  <>Jelajahi <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300 bg-clip-text text-transparent">Koleksi Penginapan</span> Kami</>
+                  <>Jelajahi <span className="bg-gradient-to-r from-emerald-300 via-teal-200 to-teal-100 bg-clip-text text-transparent">Koleksi Penginapan</span> Kami</>
                 ) : (
-                  <>Temukan <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300 bg-clip-text text-transparent">Tempat Penginapan</span> Sesuai Kebutuhan</>
+                  <>Temukan <span className="bg-gradient-to-r from-emerald-300 via-teal-200 to-teal-100 bg-clip-text text-transparent">Tempat Penginapan</span> Terbaikmu</>
                 )}
               </h1>
               
-              <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
+              <p className="text-base sm:text-lg text-teal-100/80 max-w-2xl mx-auto leading-relaxed font-sans">
                 {isOwnerCatalog 
                   ? `Temukan berbagai pilihan tempat menginap harian, kost bulanan, homestay, dan villa terbaik yang dikelola langsung oleh ${settings.ownerName || 'Pengelola'}.` 
                   : `Pilih dari berbagai pilihan tempat menginap harian, kost bulanan eksklusif, homestay keluarga, dan villa dengan fasilitas terjamin.`}
               </p>
 
               {/* SEARCH & FILTER BAR FOR CALON PENGINAP */}
-              <div className="mt-8 bg-white/95 backdrop-blur-xl p-4 sm:p-6 rounded-3xl border border-white/20 shadow-2xl text-slate-800 text-left max-w-4xl mx-auto space-y-4">
+              <div className="mt-10 glass-panel p-4 sm:p-5 rounded-3xl text-slate-800 text-left max-w-4xl mx-auto space-y-4 animate-fade-in-up delay-200 transform hover:-translate-y-1 transition-all duration-300">
                 
                 {/* Search input + Type filters */}
-                <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
                   
                   {/* Search Bar */}
-                  <div className="relative flex-1 w-full">
-                    <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="relative flex-1 w-full group">
+                    <Search className="h-5 w-5 text-teal-500 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-teal-600 transition-colors" />
                     <input
                       type="text"
                       placeholder="Cari nama penginapan atau lokasi alamat..."
                       value={catalogSearch}
                       onChange={(e) => setCatalogSearch(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full bg-slate-50/80 hover:bg-slate-50 border border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:bg-white transition-all shadow-inner"
                     />
                     {catalogSearch && (
-                      <button onClick={() => setCatalogSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <X className="h-4 w-4" />
+                      <button onClick={() => setCatalogSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-full p-1 transition-colors">
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>
 
                   {/* Category Type Filter */}
-                  <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-2xl w-full sm:w-auto overflow-x-auto">
+                  <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl w-full sm:w-auto overflow-x-auto border border-slate-200/50">
                     {['All', 'Kost', 'Homestay', 'Guesthouse'].map(type => (
                       <button
                         key={type}
                         onClick={() => setCatalogTypeFilter(type)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                        className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                           catalogTypeFilter === type 
-                            ? 'bg-teal-600 text-white shadow-xs' 
-                            : 'text-slate-600 hover:text-slate-900'
+                            ? 'bg-white text-teal-700 shadow-sm border border-slate-200/80' 
+                            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
                         }`}
                       >
                         {type === 'All' ? 'Semua Tipe' : type}
@@ -289,10 +289,10 @@ export function LandingPage({
                 </div>
 
                 {/* Quick counters summary */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs text-slate-500 font-semibold">
-                  <span>Menampilkan <strong>{filteredCatalogProperties.length}</strong> tempat penginapan aktif</span>
-                  <span className="text-teal-700 bg-teal-50 px-2.5 py-1 rounded-lg font-bold border border-teal-200">
-                    ✓ Garansi Bersih & Transparan
+                <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-200/60 text-xs text-slate-500 font-medium">
+                  <span>Menampilkan <strong className="text-slate-800">{filteredCatalogProperties.length}</strong> tempat penginapan</span>
+                  <span className="flex items-center gap-1 text-teal-700 bg-teal-50/80 px-3 py-1.5 rounded-full font-semibold border border-teal-200/60">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Garansi Bersih & Nyaman
                   </span>
                 </div>
 
@@ -319,85 +319,85 @@ export function LandingPage({
                 return (
                   <div 
                     key={prop.id}
-                    className="bg-white rounded-3xl border border-slate-200/90 shadow-xs hover:shadow-2xl transition-all duration-300 flex flex-col overflow-hidden group hover:border-teal-400"
+                    className="bg-white rounded-[2rem] border border-slate-200/60 shadow-lg shadow-slate-200/40 hover:shadow-2xl hover:shadow-teal-500/10 transition-all duration-500 flex flex-col overflow-hidden group hover:-translate-y-1 animate-fade-in-up delay-100"
                   >
                     {/* Property Cover Image Header */}
-                    <div className="relative h-52 bg-slate-100 overflow-hidden">
+                    <div className="relative h-64 bg-slate-100 overflow-hidden">
                       <img
                         src={prop.coverImage || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&auto=format&fit=crop&q=80'}
                         alt={prop.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/20 to-transparent" />
 
                       {/* Property Type Badge */}
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                        <span className="px-3 py-1 rounded-full text-xs font-black bg-slate-950/80 text-white backdrop-blur-md shadow-md">
-                          🏠 {prop.type}
+                      <div className="absolute top-4 left-4 flex items-center gap-2">
+                        <span className="px-3.5 py-1.5 rounded-full text-[11px] font-black bg-white/95 text-slate-900 shadow-sm">
+                          {prop.type}
                         </span>
-                        <span className="bg-emerald-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold shadow-md">
-                          {vacantRoomsCount > 0 ? `✓ ${vacantRoomsCount} Kamar Ready` : 'Full Booked'}
+                        <span className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-md ${vacantRoomsCount > 0 ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
+                          {vacantRoomsCount > 0 ? `${vacantRoomsCount} Kamar Tersedia` : 'Penuh'}
                         </span>
                       </div>
 
                       {/* City Tag */}
-                      <div className="absolute top-3 right-3">
-                        <span className="bg-white/90 text-slate-900 backdrop-blur-md text-[10px] font-extrabold px-2.5 py-1 rounded-xl shadow-xs">
-                          📍 {prop.city}
+                      <div className="absolute top-4 right-4">
+                        <span className="bg-slate-900/60 text-white backdrop-blur-md text-[11px] font-semibold px-3 py-1.5 rounded-full border border-white/20">
+                          <MapPin className="h-3 w-3 inline mr-1" />{prop.city}
                         </span>
                       </div>
 
                       {/* Title Badge overlay */}
-                      <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-md border border-white">
-                        <h3 className="text-sm font-black text-slate-900 truncate">{prop.name}</h3>
-                        <p className="text-[10px] text-slate-500 font-medium truncate flex items-center gap-1 mt-0.5">
-                          <MapPin className="h-3 w-3 text-teal-600 shrink-0" />
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <h3 className="text-xl font-display font-bold text-white drop-shadow-md truncate">{prop.name}</h3>
+                        <p className="text-xs text-slate-200 font-medium truncate flex items-center gap-1.5 mt-1">
                           <span>{prop.address}</span>
                         </p>
                       </div>
                     </div>
 
                     {/* Card Body */}
-                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                      <div className="space-y-3">
-                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                    <div className="p-6 flex-1 flex flex-col justify-between space-y-5 bg-white relative">
+                      <div className="space-y-4">
+                        <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
                           {prop.description}
                         </p>
 
                         {/* Starting Price Box */}
-                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 flex items-center justify-between">
+                        <div className="flex items-center justify-between">
                           <div>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase block">Mulai Tarif Harian</span>
-                            <span className="text-base font-black text-teal-700">
-                              Rp {(prop.startPriceDay || 180000).toLocaleString('id-ID')}
-                            </span>
-                            <span className="text-[10px] text-slate-400"> /malam</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase block">Sewa Bulanan</span>
-                            <span className="text-xs font-black text-slate-800">
-                              Rp {(prop.startPriceMonth || 1750000).toLocaleString('id-ID')}
-                            </span>
-                            <span className="text-[10px] text-slate-400 block">/bulan</span>
+                            <span className="text-[11px] text-slate-400 font-semibold block mb-0.5">Mulai dari</span>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-lg font-display font-bold text-teal-600">
+                                Rp {(prop.startPriceMonth || 1750000).toLocaleString('id-ID')}
+                              </span>
+                              <span className="text-xs text-slate-400 font-medium">/bulan</span>
+                            </div>
                           </div>
                         </div>
 
                         {/* Facilities */}
-                        <div className="flex flex-wrap gap-1.5">
-                          {(prop.facilities || ['AC', 'WiFi', 'Kamar Mandi Dalam']).slice(0, 4).map((fac, idx) => (
-                            <span key={idx} className="bg-teal-50 text-teal-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-teal-100/70">
-                              ✓ {fac}
+                        <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
+                          {(prop.facilities || ['AC', 'WiFi', 'Kamar Mandi Dalam']).slice(0, 3).map((fac, idx) => (
+                            <span key={idx} className="bg-slate-50 text-slate-600 text-[11px] font-medium px-3 py-1 rounded-full border border-slate-200/60 flex items-center gap-1">
+                              {fac}
                             </span>
                           ))}
+                          {(prop.facilities?.length || 3) > 3 && (
+                            <span className="bg-slate-50 text-slate-400 text-[11px] font-medium px-2 py-1 rounded-full border border-slate-200/60">
+                              +{(prop.facilities?.length || 3) - 3}
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       {/* Action Button */}
                       <button
                         onClick={() => handleOpenPropertyPage(prop.id)}
-                        className="w-full py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs rounded-2xl shadow-md shadow-teal-600/15 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                        className="w-full py-3.5 bg-teal-50 hover:bg-teal-600 text-teal-700 hover:text-white font-bold text-sm rounded-xl transition-all cursor-pointer border border-teal-100 group-hover:border-transparent flex items-center justify-center gap-2"
                       >
-                        <span>Lihat Landing Page & Pesan Kamar</span>
-                        <ChevronRight className="h-4 w-4" />
+                        <span>Lihat Detail</span>
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </button>
                     </div>
 
@@ -430,73 +430,73 @@ export function LandingPage({
           </div>
 
           {/* HERO BANNER FOR ACTIVE PROPERTY */}
-          <section className="relative overflow-hidden bg-gradient-to-b from-teal-900 via-slate-900 to-slate-950 text-white pt-10 pb-20 px-4 sm:px-6 lg:px-8">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-teal-500/10 blur-3xl pointer-events-none rounded-full" />
+          <section className="relative overflow-hidden bg-gradient-to-br from-teal-950 via-teal-900 to-slate-900 text-white pt-16 pb-28 px-4 sm:px-6 lg:px-8 font-display">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-teal-500/20 blur-[100px] pointer-events-none rounded-full" />
 
-            <div className="max-w-5xl mx-auto text-center relative z-10 space-y-4">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 backdrop-blur-md">
-                <Building className="h-3.5 w-3.5 text-emerald-400" /> 
+            <div className="max-w-5xl mx-auto text-center relative z-10 space-y-6 animate-fade-in-up">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white/10 text-teal-100 border border-white/20 backdrop-blur-md shadow-lg shadow-teal-500/10">
+                <Building className="h-4 w-4 text-amber-300" /> 
                 <span>{activeProperty.type} • {activeProperty.city}</span>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight text-white leading-[1.1]">
                 {activeProperty.name}
               </h1>
               
-              <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed flex items-center justify-center gap-1.5">
-                <MapPin className="h-4 w-4 text-emerald-400 shrink-0" />
+              <p className="text-base sm:text-lg text-teal-100/80 max-w-2xl mx-auto leading-relaxed flex items-center justify-center gap-2 font-sans">
+                <MapPin className="h-5 w-5 text-emerald-300 shrink-0" />
                 <span>{activeProperty.address}</span>
               </p>
 
               {/* INTERACTIVE GUEST BOOKING SEARCH BAR */}
-              <div className="mt-8 bg-white/95 backdrop-blur-xl p-4 sm:p-6 rounded-3xl border border-white/20 shadow-2xl text-slate-800 text-left max-w-4xl mx-auto">
+              <div className="mt-10 glass-panel p-5 sm:p-8 rounded-[2rem] text-slate-800 text-left max-w-4xl mx-auto animate-fade-in-up delay-200 shadow-2xl">
                 
                 {/* Stay Type Toggle (Harian vs Bulanan) */}
-                <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
-                  <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl">
+                <div className="flex flex-col sm:flex-row items-center justify-between border-b border-slate-200/60 pb-5 mb-5 gap-4">
+                  <div className="flex items-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl w-full sm:w-auto border border-slate-200/50">
                     <button
                       type="button"
                       onClick={() => setStayType('Harian')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        stayType === 'Harian' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                        stayType === 'Harian' ? 'bg-white text-teal-700 shadow-sm border border-slate-200/80' : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      🌙 Menginap Harian
+                      🌙 Harian
                     </button>
                     <button
                       type="button"
                       onClick={() => setStayType('Bulanan')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        stayType === 'Bulanan' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                        stayType === 'Bulanan' ? 'bg-white text-teal-700 shadow-sm border border-slate-200/80' : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      📅 Sewa Bulanan
+                      📅 Bulanan
                     </button>
                   </div>
 
-                  <div className="text-right hidden sm:block">
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                      ✓ {availableRoomsCount} Kamar Kosong Ready
+                  <div className="text-right w-full sm:w-auto">
+                    <span className="flex items-center justify-center sm:justify-end gap-1.5 text-sm font-bold text-teal-700 bg-teal-50/80 px-4 py-2 rounded-xl border border-teal-200/60 w-full sm:w-auto">
+                      <CheckCircle2 className="h-4 w-4" /> {availableRoomsCount} Kamar Kosong
                     </span>
                   </div>
                 </div>
 
                 {/* Inputs Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
                       Check-In
                     </label>
                     <input
                       type="date"
                       value={checkInDate}
                       onChange={(e) => setCheckInDate(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full bg-slate-50/80 hover:bg-slate-50 border border-slate-200/60 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:bg-white transition-all shadow-inner"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
                       {stayType === 'Harian' ? 'Check-Out' : 'Lama Sewa'}
                     </label>
                     {stayType === 'Harian' ? (
@@ -504,38 +504,38 @@ export function LandingPage({
                         type="date"
                         value={checkOutDate}
                         onChange={(e) => setCheckOutDate(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        className="w-full bg-slate-50/80 hover:bg-slate-50 border border-slate-200/60 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:bg-white transition-all shadow-inner"
                       />
                     ) : (
-                      <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 flex items-center justify-between">
+                      <div className="w-full bg-slate-50/80 border border-slate-200/60 rounded-xl px-4 py-3 text-sm font-bold text-slate-600 flex items-center justify-between shadow-inner">
                         <span>Minimal 1 Bulan</span>
-                        <span className="text-[10px] text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded">Fleksibel</span>
+                        <span className="text-[10px] text-teal-700 bg-teal-100/50 px-2 py-0.5 rounded-md">Fleksibel</span>
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
                       Jumlah Tamu
                     </label>
                     <select
                       value={guestCount}
                       onChange={(e) => setGuestCount(Number(e.target.value))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
+                      className="w-full bg-slate-50/80 hover:bg-slate-50 border border-slate-200/60 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:bg-white transition-all shadow-inner cursor-pointer"
                     >
                       <option value={1}>1 Orang Guest</option>
                       <option value={2}>2 Orang Guest</option>
-                      <option value={3}>3 Orang (Family/Group)</option>
+                      <option value={3}>3 Orang (Group)</option>
                     </select>
                   </div>
 
                   <div className="flex items-end">
                     <a
                       href="#kamar-property"
-                      className="w-full py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-teal-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      className="w-full py-3 bg-teal-50 hover:bg-teal-600 text-teal-700 hover:text-white font-bold text-sm rounded-xl transition-all cursor-pointer border border-teal-100 hover:border-transparent flex items-center justify-center gap-2 group shadow-sm"
                     >
-                      <Search className="h-4 w-4" />
-                      <span>Cari Kamar Tersedia</span>
+                      <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                      <span>Cari Kamar</span>
                     </a>
                   </div>
                 </div>
@@ -584,75 +584,86 @@ export function LandingPage({
                 return (
                   <div 
                     key={room.id}
-                    className="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden group hover:border-teal-300"
+                    className="bg-white rounded-[2rem] border border-slate-200/60 shadow-lg shadow-slate-200/40 hover:shadow-2xl hover:shadow-teal-500/10 transition-all duration-500 flex flex-col overflow-hidden group hover:-translate-y-1 animate-fade-in-up delay-200"
                   >
-                    <div className="relative h-48 sm:h-52 bg-slate-100 overflow-hidden">
+                    <div className="relative h-56 sm:h-64 bg-slate-100 overflow-hidden">
                       <img
                         src={room.images?.[0] || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format&fit=crop&q=80'}
                         alt={`Kamar ${room.number}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/20 to-transparent" />
 
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                        <span className={`px-3 py-1 rounded-full text-xs font-black shadow-md ${
-                          isAvailable ? 'bg-emerald-500 text-white' : 'bg-slate-900/80 text-white backdrop-blur-md'
+                      <div className="absolute top-4 left-4 flex items-center gap-2">
+                        <span className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-md ${
+                          isAvailable ? 'bg-emerald-500/90 text-white' : 'bg-slate-900/80 text-white'
                         }`}>
                           {isAvailable ? '✓ Tersedia Ready' : `Terisi (${room.status})`}
                         </span>
                       </div>
 
-                      <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-xl shadow-md border border-white">
-                        <span className="text-xs font-black text-slate-900">Kamar {room.number}</span>
-                        <span className="text-[10px] text-slate-500 font-medium ml-1.5">({room.size})</span>
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-display font-bold text-white drop-shadow-md truncate">Kamar {room.number}</span>
+                          <span className="text-xs text-slate-300 font-medium">({room.size})</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div className="p-6 flex-1 flex flex-col justify-between bg-white relative">
                       <div>
-                        <div className="flex items-baseline justify-between mb-3 border-b border-slate-100 pb-3">
+                        <div className="flex items-baseline justify-between mb-4 border-b border-slate-100 pb-4">
                           <div>
-                            <span className="text-2xl font-black text-teal-700">
-                              Rp {activePrice.toLocaleString('id-ID')}
-                            </span>
-                            <span className="text-xs text-slate-400 font-semibold ml-1">
-                              /{stayType === 'Harian' ? 'malam' : 'bulan'}
-                            </span>
+                            <span className="text-[11px] text-slate-400 font-semibold block mb-0.5">Harga Sewa</span>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-2xl font-display font-bold text-teal-600">
+                                Rp {activePrice.toLocaleString('id-ID')}
+                              </span>
+                              <span className="text-xs text-slate-400 font-medium ml-1">
+                                /{stayType === 'Harian' ? 'malam' : 'bulan'}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
-                        <p className="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">
+                        <p className="text-sm text-slate-500 line-clamp-2 mb-4 leading-relaxed">
                           {room.description || 'Kamar penginapan modern dengan fasilitas lengkap dan akses strategis.'}
                         </p>
 
-                        <div className="flex flex-wrap gap-1.5 mb-4">
-                          {(room.facilities || []).slice(0, 4).map((fac, idx) => (
-                            <span key={idx} className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                        <div className="flex flex-wrap gap-2 mb-5">
+                          {(room.facilities || []).slice(0, 3).map((fac, idx) => (
+                            <span key={idx} className="bg-slate-50 text-slate-600 text-[11px] font-medium px-3 py-1 rounded-full border border-slate-200/60">
                               {fac}
                             </span>
                           ))}
+                          {(room.facilities?.length || 0) > 3 && (
+                            <span className="bg-slate-50 text-slate-400 text-[11px] font-medium px-2 py-1 rounded-full border border-slate-200/60">
+                              +{(room.facilities?.length || 0) - 3}
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
                         <button
                           onClick={() => setSelectedRoomForPreview(room)}
-                          className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          className="flex-1 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-slate-200/80 hover:border-slate-300"
                         >
-                          <Eye className="h-3.5 w-3.5" />
+                          <Eye className="h-4 w-4" />
                           <span>Detail</span>
                         </button>
 
                         <button
                           onClick={() => handleOpenBookingModal(room)}
                           disabled={!isAvailable}
-                          className={`flex-1 py-2.5 font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                          className={`flex-1 py-3 font-bold text-sm rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                             isAvailable 
-                              ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-teal-600/15' 
-                              : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                              ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-teal-500/20' 
+                              : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-200'
                           }`}
                         >
-                          <CreditCard className="h-3.5 w-3.5" />
-                          <span>{isAvailable ? 'Pesan Sekarang' : 'Sudah Terisi'}</span>
+                          <CreditCard className="h-4 w-4" />
+                          <span>{isAvailable ? 'Pesan' : 'Terisi'}</span>
                         </button>
                       </div>
                     </div>

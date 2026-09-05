@@ -1,47 +1,93 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Calm Natural Neutrals (Slate overrides - Soft White to Forest Slate) */
-  --color-slate-50: #fbfcfb;    /* Clean soft white with microscopic mint tint */
-  --color-slate-100: #f1f4f1;   /* Calm light gray-green border */
-  --color-slate-200: #e3e8e3;   /* Soft gray-green border */
-  --color-slate-300: #ccd4cc;   /* Muted text/placeholder */
-  --color-slate-400: #abb5ab;   /* Soft metadata text / disabled icons */
-  --color-slate-500: #899489;   /* Muted body text */
-  --color-slate-600: #687368;   /* Calm body text */
-  --color-slate-700: #4a544a;   /* Accent body text */
-  --color-slate-800: #2f362f;   /* Titles and strong forest text */
-  --color-slate-900: #1b201b;   /* Deep forest charcoal accent */
-  --color-slate-950: #101310;   /* Ultra dark forest green */
+  /* Calm Natural Neutrals */
+  --color-slate-50: #fbfcfb;
+  --color-slate-100: #f1f4f1;
+  --color-slate-200: #e3e8e3;
+  --color-slate-300: #ccd4cc;
+  --color-slate-400: #abb5ab;
+  --color-slate-500: #899489;
+  --color-slate-600: #687368;
+  --color-slate-700: #4a544a;
+  --color-slate-800: #2f362f;
+  --color-slate-900: #1b201b;
+  --color-slate-950: #101310;
 
-  /* Calm Pastel Mint Green (Teal overrides - Brand Primary Accent) */
-  --color-teal-50: #f2faf4;
-  --color-teal-100: #e2f4e8;
-  --color-teal-200: #c6e9d2;
-  --color-teal-300: #9cd7b1;
-  --color-teal-400: #6cbe8a;
-  --color-teal-500: #4ba66f;   /* Calming positive-mind primary mint */
-  --color-teal-600: #3b8c5a;
-  --color-teal-700: #307149;
-  --color-teal-800: #26593a;
-  --color-teal-900: #1f472f;
+  /* Vibrant Teal (Rukita-inspired Greenish-Teal) */
+  --color-teal-50: #f0fdf6;
+  --color-teal-100: #dcfce9;
+  --color-teal-200: #bbf7d4;
+  --color-teal-300: #86efb1;
+  --color-teal-400: #4ade89;
+  --color-teal-500: #22c56a;
+  --color-teal-600: #16a353;
+  --color-teal-700: #158043;
+  --color-teal-800: #166538;
+  --color-teal-900: #14532f;
 
-  /* Calming Leaf Green (Emerald overrides - Success & Occupancy State) */
-  --color-emerald-50: #f0faf2;
-  --color-emerald-100: #dbf4e0;
-  --color-emerald-200: #b9e9c3;
-  --color-emerald-300: #8cd79c;
-  --color-emerald-400: #5cbd72;
-  --color-emerald-500: #3ca255; /* Soft success state */
-  --color-emerald-600: #2e8642;
-  --color-emerald-700: #266b37;
-  --color-emerald-800: #20552e;
-  --color-emerald-900: #1b4527;
+  /* Deep Emerald / Forest */
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-emerald-900: #064e3b;
 }
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-xl shadow-slate-200/50;
+  }
+  .glass-dark {
+    @apply bg-slate-900/80 backdrop-blur-lg border border-slate-700/50 shadow-2xl;
+  }
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+/* Custom Animations */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Staggered animation delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
 
 /* Custom scrollbar to look polished */
 ::-webkit-scrollbar {
@@ -52,10 +98,9 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #dbcaaf;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #beab92;
+  background: #94a3b8;
 }
-
