@@ -82,20 +82,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/bookings',            [\App\Http\Controllers\BookingController::class, 'index']);
         Route::post('/bookings',           [\App\Http\Controllers\BookingController::class, 'store']);
         Route::delete('/bookings/{id}',    [\App\Http\Controllers\BookingController::class, 'destroy']);
+        Route::patch('/bookings/{id}/status', [\App\Http\Controllers\BookingController::class, 'updateStatus']);
 
         // Operations
         Route::get('/operations',          [\App\Http\Controllers\OperationTaskController::class, 'index']);
         Route::post('/operations',         [\App\Http\Controllers\OperationTaskController::class, 'store']);
         Route::delete('/operations/{id}',  [\App\Http\Controllers\OperationTaskController::class, 'destroy']);
+        Route::patch('/operations/{id}/status', [\App\Http\Controllers\OperationTaskController::class, 'updateStatus']);
 
         // Staff
         Route::get('/staff',               [\App\Http\Controllers\StaffMemberController::class, 'index']);
         Route::post('/staff',              [\App\Http\Controllers\StaffMemberController::class, 'store']);
         Route::delete('/staff/{id}',       [\App\Http\Controllers\StaffMemberController::class, 'destroy']);
+        Route::patch('/staff/{id}/role',   [\App\Http\Controllers\StaffMemberController::class, 'updateRole']);
 
         // Website Configs
         Route::get('/website-configs',     [\App\Http\Controllers\WebsiteConfigController::class, 'index']);
         Route::post('/website-configs',    [\App\Http\Controllers\WebsiteConfigController::class, 'store']);
+        Route::delete('/website-configs/{propertyId}', [\App\Http\Controllers\WebsiteConfigController::class, 'destroy']);
     });
 
     // Restore (full data import for authenticated user only)
