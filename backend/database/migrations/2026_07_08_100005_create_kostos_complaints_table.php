@@ -12,6 +12,26 @@ return new class extends Migration
             return;
         }
 
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            DB::statement("CREATE TABLE kostos_complaints (
+                id VARCHAR(64) PRIMARY KEY,
+                seq INTEGER,
+                tenantId VARCHAR(64) NOT NULL DEFAULT '',
+                tenantName VARCHAR(191) NOT NULL DEFAULT '',
+                roomId VARCHAR(64) NOT NULL DEFAULT '',
+                roomNumber VARCHAR(32) NOT NULL DEFAULT '',
+                title TEXT NOT NULL,
+                category VARCHAR(32) NOT NULL,
+                status VARCHAR(16) NOT NULL DEFAULT 'Baru',
+                priority VARCHAR(16) NOT NULL DEFAULT 'Sedang',
+                date VARCHAR(32) NOT NULL DEFAULT '',
+                description TEXT NOT NULL,
+                repairCost INT NULL,
+                notes TEXT NULL
+            )");
+            return;
+        }
+
         DB::statement("CREATE TABLE kostos_complaints (
             id VARCHAR(64) PRIMARY KEY,
             seq INT NOT NULL AUTO_INCREMENT, UNIQUE KEY complaints_seq (seq),

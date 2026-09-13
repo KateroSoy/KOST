@@ -9,18 +9,28 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+
         if (Schema::hasTable('kostos_users')) {
             if (! Schema::hasColumn('kostos_users', 'role')) {
-                DB::statement("ALTER TABLE kostos_users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'owner' AFTER slug");
+                DB::statement($isSqlite
+                    ? "ALTER TABLE kostos_users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'owner'"
+                    : "ALTER TABLE kostos_users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'owner' AFTER slug");
             }
             if (! Schema::hasColumn('kostos_users', 'status')) {
-                DB::statement("ALTER TABLE kostos_users ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'active' AFTER role");
+                DB::statement($isSqlite
+                    ? "ALTER TABLE kostos_users ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'active'"
+                    : "ALTER TABLE kostos_users ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'active' AFTER role");
             }
             if (! Schema::hasColumn('kostos_users', 'plan')) {
-                DB::statement("ALTER TABLE kostos_users ADD COLUMN plan VARCHAR(32) NOT NULL DEFAULT 'pro' AFTER status");
+                DB::statement($isSqlite
+                    ? "ALTER TABLE kostos_users ADD COLUMN plan VARCHAR(32) NOT NULL DEFAULT 'pro'"
+                    : "ALTER TABLE kostos_users ADD COLUMN plan VARCHAR(32) NOT NULL DEFAULT 'pro' AFTER status");
             }
             if (! Schema::hasColumn('kostos_users', 'expires_at')) {
-                DB::statement("ALTER TABLE kostos_users ADD COLUMN expires_at DATETIME NULL AFTER plan");
+                DB::statement($isSqlite
+                    ? "ALTER TABLE kostos_users ADD COLUMN expires_at DATETIME NULL"
+                    : "ALTER TABLE kostos_users ADD COLUMN expires_at DATETIME NULL AFTER plan");
             }
         }
 

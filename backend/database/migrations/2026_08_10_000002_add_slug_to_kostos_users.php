@@ -8,9 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+
         if (Schema::hasTable('kostos_users') && !Schema::hasColumn('kostos_users', 'slug')) {
-            DB::statement("ALTER TABLE kostos_users ADD COLUMN slug VARCHAR(191) NULL AFTER phone");
-            DB::statement("ALTER TABLE kostos_users ADD UNIQUE INDEX kostos_users_slug_unique (slug)");
+            if ($isSqlite) {
+                DB::statement("ALTER TABLE kostos_users ADD COLUMN slug VARCHAR(191) NULL");
+                DB::statement("CREATE UNIQUE INDEX kostos_users_slug_unique ON kostos_users (slug)");
+            } else {
+                DB::statement("ALTER TABLE kostos_users ADD COLUMN slug VARCHAR(191) NULL AFTER phone");
+                DB::statement("ALTER TABLE kostos_users ADD UNIQUE INDEX kostos_users_slug_unique (slug)");
+            }
         }
 
         // Backfill slug for existing users
@@ -48,7 +55,11 @@ return new class extends Migration
     public function down(): void
     {
         if (Schema::hasTable('kostos_users') && Schema::hasColumn('kostos_users', 'slug')) {
-            DB::statement("ALTER TABLE kostos_users DROP INDEX kostos_users_slug_unique");
+            if (DB::connection()->getDriverName() === 'sqlite') {
+                DB::statement("DROP INDEX IF EXISTS kostos_users_slug_unique");
+            } else {
+                DB::statement("ALTER TABLE kostos_users DROP INDEX kostos_users_slug_unique");
+            }
             DB::statement("ALTER TABLE kostos_users DROP COLUMN slug");
         }
     }
