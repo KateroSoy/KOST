@@ -42,6 +42,24 @@ class AuthController extends Controller
     }
 
     /**
+     * Common auth-facing user shape shared by register/login/me.
+     */
+    private function serializeUser(User $user): array
+    {
+        return [
+            'id'            => $user->id,
+            'name'          => $user->name,
+            'phone'         => $user->phone,
+            'slug'          => $user->slug,
+            'role'          => $user->role ?? 'owner',
+            'status'        => $user->status ?? 'active',
+            'plan'          => $user->plan ?? 'pro',
+            'effectivePlan' => $user->effectivePlan(),
+            'expiresAt'     => optional($user->expires_at)->toIso8601String(),
+        ];
+    }
+
+    /**
      * Register a new property owner account (SaaS Customer).
      */
     public function register(Request $request)
@@ -57,14 +75,15 @@ class AuthController extends Controller
         $slug     = $this->uniqueSlug($kostName);
 
         $user = User::create([
-            'name'     => $request->name,
-            'phone'    => $request->phone,
-            'slug'     => $slug,
-            'role'     => 'owner',
-            'status'   => 'active',
-            'plan'     => 'pro',
-            'email'    => $request->email ?? null,
-            'password' => Hash::make($request->password),
+            'name'       => $request->name,
+            'phone'      => $request->phone,
+            'slug'       => $slug,
+            'role'       => 'owner',
+            'status'     => 'active',
+            'plan'       => 'pro',
+            'expires_at' => now()->addDays(7),
+            'email'      => $request->email ?? null,
+            'password'   => Hash::make($request->password),
         ]);
 
         Setting::create([
@@ -91,15 +110,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'user'  => [
-                'id'     => $user->id,
-                'name'   => $user->name,
-                'phone'  => $user->phone,
-                'slug'   => $user->slug,
-                'role'   => $user->role ?? 'owner',
-                'status' => $user->status ?? 'active',
-                'plan'   => $user->plan ?? 'pro',
-            ],
+            'user'  => $this->serializeUser($user),
         ], 201);
     }
 
@@ -132,15 +143,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'user'  => [
-                'id'     => $user->id,
-                'name'   => $user->name,
-                'phone'  => $user->phone,
-                'slug'   => $user->slug,
-                'role'   => $user->role ?? 'owner',
-                'status' => $user->status ?? 'active',
-                'plan'   => $user->plan ?? 'pro',
-            ],
+            'user'  => $this->serializeUser($user),
         ]);
     }
 
@@ -159,16 +162,9 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         $user = $request->user();
-        return response()->json([
-            'id'     => $user->id,
-            'name'   => $user->name,
-            'phone'  => $user->phone,
-            'slug'   => $user->slug,
-            'role'   => $user->role ?? 'owner',
-            'status' => $user->status ?? 'active',
-            'plan'   => $user->plan ?? 'pro',
-            'email'  => $user->email,
-        ]);
+        return response()->json(array_merge($this->serializeUser($user), [
+            'email' => $user->email,
+        ]));
     }
 
     /**

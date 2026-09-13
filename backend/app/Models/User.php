@@ -46,4 +46,17 @@ class User extends Authenticatable
     {
         return $this->role === 'super_admin';
     }
+
+    /**
+     * Effective plan right now: a 'pro' grant with a past expiry reads as 'basic'.
+     * Computed on read — never mutates the stored `plan` column.
+     */
+    public function effectivePlan(): string
+    {
+        if ($this->plan === 'pro' && $this->expires_at !== null && now()->greaterThan($this->expires_at)) {
+            return 'basic';
+        }
+
+        return $this->plan;
+    }
 }
