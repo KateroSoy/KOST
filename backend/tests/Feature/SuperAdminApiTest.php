@@ -21,12 +21,12 @@ class SuperAdminApiTest extends TestCase
         
         $this->superAdmin = User::create([
             'name' => 'Master Admin',
-            'phone' => '080000000000',
+            'phone' => '080000000099',
             'password' => bcrypt('admin123'),
             'role' => 'super_admin',
             'status' => 'active',
             'plan' => 'pro',
-            'slug' => 'master-admin',
+            'slug' => 'test-master-admin',
         ]);
 
         $this->owner = User::create([
