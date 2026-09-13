@@ -76,6 +76,28 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/properties/{id}',     [PropertyController::class, 'update']);
     Route::delete('/properties/{id}',  [PropertyController::class, 'destroy']);
 
+    // Bookings, Operations, Staff, Website Configs (Pro tier)
+    Route::middleware('plan:pro')->group(function () {
+        // Bookings
+        Route::get('/bookings',            [\App\Http\Controllers\BookingController::class, 'index']);
+        Route::post('/bookings',           [\App\Http\Controllers\BookingController::class, 'store']);
+        Route::delete('/bookings/{id}',    [\App\Http\Controllers\BookingController::class, 'destroy']);
+
+        // Operations
+        Route::get('/operations',          [\App\Http\Controllers\OperationTaskController::class, 'index']);
+        Route::post('/operations',         [\App\Http\Controllers\OperationTaskController::class, 'store']);
+        Route::delete('/operations/{id}',  [\App\Http\Controllers\OperationTaskController::class, 'destroy']);
+
+        // Staff
+        Route::get('/staff',               [\App\Http\Controllers\StaffMemberController::class, 'index']);
+        Route::post('/staff',              [\App\Http\Controllers\StaffMemberController::class, 'store']);
+        Route::delete('/staff/{id}',       [\App\Http\Controllers\StaffMemberController::class, 'destroy']);
+
+        // Website Configs
+        Route::get('/website-configs',     [\App\Http\Controllers\WebsiteConfigController::class, 'index']);
+        Route::post('/website-configs',    [\App\Http\Controllers\WebsiteConfigController::class, 'store']);
+    });
+
     // Restore (full data import for authenticated user only)
     Route::post('/restore', [RestoreController::class, 'store']);
 
