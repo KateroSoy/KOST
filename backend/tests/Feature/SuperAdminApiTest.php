@@ -100,10 +100,51 @@ class SuperAdminApiTest extends TestCase
     {
         $response = $this->actingAs($this->superAdmin, 'sanctum')
             ->deleteJson("/api/admin/users/{$this->owner->id}");
-        
+
         $response->assertStatus(200)
             ->assertJson(['ok' => true]);
 
         $this->assertNull(User::find($this->owner->id));
+    }
+
+    public function test_super_admin_setting_plan_clears_expires_at()
+    {
+        $this->owner->plan = 'pro';
+        $this->owner->expires_at = now()->addDays(3);
+        $this->owner->save();
+
+        $response = $this->actingAs($this->superAdmin, 'sanctum')
+            ->patchJson("/api/admin/users/{$this->owner->id}/plan", ['plan' => 'pro']);
+
+        $response->assertStatus(200)->assertJsonPath('effectivePlan', 'pro');
+        $this->assertNull($this->owner->fresh()->expires_at);
+    }
+
+    public function test_super_admin_setting_basic_plan_also_clears_expires_at()
+    {
+        $this->owner->plan = 'pro';
+        $this->owner->expires_at = now()->addDays(3);
+        $this->owner->save();
+
+        $this->actingAs($this->superAdmin, 'sanctum')
+            ->patchJson("/api/admin/users/{$this->owner->id}/plan", ['plan' => 'basic'])
+            ->assertStatus(200);
+
+        $fresh = $this->owner->fresh();
+        $this->assertEquals('basic', $fresh->plan);
+        $this->assertNull($fresh->expires_at);
+    }
+
+    public function test_users_listing_exposes_effective_plan_and_expiry()
+    {
+        $this->owner->plan = 'pro';
+        $this->owner->expires_at = now()->subDay();
+        $this->owner->save();
+
+        $response = $this->actingAs($this->superAdmin, 'sanctum')->getJson('/api/admin/users');
+
+        $response->assertStatus(200);
+        $this->assertEquals('basic', $response->json()[0]['effectivePlan']);
+        $this->assertNotNull($response->json()[0]['expiresAt']);
     }
 }

@@ -97,6 +97,8 @@ class SuperAdminController extends Controller
                 'role'          => $u->role ?? 'owner',
                 'status'        => $u->status ?? 'active',
                 'plan'          => $u->plan ?? 'pro',
+                'effectivePlan' => $u->effectivePlan(),
+                'expiresAt'     => optional($u->expires_at)->toIso8601String(),
                 'kostName'      => $settingData['kostName'] ?? ($u->name . ' Kost'),
                 'roomCount'     => $roomCount,
                 'tenantCount'   => $tenantCount,
@@ -155,11 +157,14 @@ class SuperAdminController extends Controller
         }
 
         $user->plan = $request->plan;
+        $user->expires_at = null;
         $user->save();
 
         return response()->json([
-            'ok'   => true,
-            'plan' => $user->plan,
+            'ok'            => true,
+            'plan'          => $user->plan,
+            'effectivePlan' => $user->effectivePlan(),
+            'expiresAt'     => optional($user->expires_at)->toIso8601String(),
         ]);
     }
 
