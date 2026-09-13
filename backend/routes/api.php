@@ -6,6 +6,7 @@ use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RestoreController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\SettingController;
@@ -77,4 +78,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Restore (full data import for authenticated user only)
     Route::post('/restore', [RestoreController::class, 'store']);
+
+    // Reports (Pro tier)
+    Route::middleware('plan:pro')->group(function () {
+        Route::get('/reports', [ReportController::class, 'index']);
+    });
 });
