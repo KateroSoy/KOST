@@ -19,6 +19,8 @@ Route::get('/health', fn () => response()->json(['ok' => true]));
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login',    [AuthController::class, 'login']);
 Route::get('/public/owner/{slug}', [PublicController::class, 'show']);
+Route::get('/public/properties/{id}', [PublicController::class, 'property']);
+Route::post('/public/properties/{id}/bookings', [PublicController::class, 'book'])->middleware('throttle:10,1');
 
 // Protected routes (require Bearer token via Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
@@ -40,6 +42,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms',           [RoomController::class, 'store']);
     Route::put('/rooms/{id}',       [RoomController::class, 'replace']);   // Full room edit
     Route::patch('/rooms/{id}',     [RoomController::class, 'update']);    // Partial (status/housekeeping)
+    Route::patch('/rooms/{id}/status', [RoomController::class, 'update']);
+    Route::patch('/rooms/{id}/housekeeping', [RoomController::class, 'update']);
     Route::delete('/rooms/{id}',    [RoomController::class, 'destroy']);
 
     // Tenants
@@ -47,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/tenants',                 [TenantController::class, 'store']);
     Route::put('/tenants/{id}',             [TenantController::class, 'update']);  // Full tenant edit
     Route::post('/tenants/{id}/move-out',   [TenantController::class, 'moveOut']);
+    Route::post('/tenants/{id}/moveout',    [TenantController::class, 'moveOut']);
     Route::delete('/tenants/{id}',          [TenantController::class, 'destroy']);
 
     // Expenses
@@ -58,12 +63,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/complaints',          [ComplaintController::class, 'index']);
     Route::post('/complaints',         [ComplaintController::class, 'store']);
     Route::patch('/complaints/{id}',   [ComplaintController::class, 'update']);
+    Route::patch('/complaints/{id}/status', [ComplaintController::class, 'update']);
     Route::delete('/complaints/{id}',  [ComplaintController::class, 'destroy']);
 
     // Bills
     Route::get('/bills',                    [BillController::class, 'index']);
     Route::post('/bills',                   [BillController::class, 'store']);
     Route::post('/bills/{id}/payments',     [BillController::class, 'payments']);
+    Route::post('/bills/{id}/payment',      [BillController::class, 'payments']);
     Route::delete('/bills/{id}',            [BillController::class, 'destroy']);
 
     // Settings

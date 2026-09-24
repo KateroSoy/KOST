@@ -62,20 +62,31 @@ class BillController extends Controller
 
     public function payments(Request $request, string $id)
     {
-        $bill = Bill::where('id', $id)
-            ->where('user_id', $request->user()->id)
-            ->first();
+        $userId = $request->user()->id;
 
-        if (! $bill) {
-            return response()->json(['error' => 'Tagihan tidak ditemukan'], 404);
-        }
+        return DB::transaction(function () use ($request, $id, $userId) {
+            $bill = Bill::where('id', $id)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->first();
 
-        $amountPaid   = (int) $request->input('amountPaid', 0);
-        $nextPaid     = $bill->paidAmount + $amountPaid;
-        $reachedLunas = $nextPaid >= $bill->totalAmount;
-        $userId       = $request->user()->id;
+            if (! $bill) {
+                return response()->json(['error' => 'Tagihan tidak ditemukan'], 404);
+            }
 
-        DB::transaction(function () use ($request, $bill, $nextPaid, $reachedLunas, $userId) {
+            $input = $request->validate([
+                'amountPaid' => 'required_without:amount|integer|min:1',
+                'amount' => 'required_without:amountPaid|integer|min:1',
+                'method' => 'required|string|max:64',
+                'date' => 'required|date_format:Y-m-d',
+                'notes' => 'nullable|string',
+            ]);
+            $amountPaid = (int) ($input['amountPaid'] ?? $input['amount']);
+            $nextPaid = $bill->paidAmount + $amountPaid;
+            if ($nextPaid > $bill->totalAmount || $bill->status === 'Lunas') {
+                return response()->json(['error' => 'Jumlah pembayaran melebihi sisa tagihan.'], 422);
+            }
+            $reachedLunas = $nextPaid === $bill->totalAmount;
             $bill->paidAmount    = $nextPaid;
             $bill->status        = $reachedLunas ? 'Lunas' : 'Sebagian';
             $bill->paymentMethod = $request->input('method');
@@ -91,9 +102,9 @@ class BillController extends Controller
                     ->where('user_id', $userId)
                     ->update(['status' => 'Terisi']);
             }
-        });
 
-        return response()->json($bill);
+            return response()->json($bill);
+        });
     }
 
     public function destroy(Request $request, string $id)

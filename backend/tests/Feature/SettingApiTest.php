@@ -3,32 +3,31 @@
 namespace Tests\Feature;
 
 use App\Models\Setting;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class SettingApiTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_get_settings_returns_existing_data_and_put_updates_it(): void
     {
-        $original = Setting::find(1)->data;
+        $user = $this->actingAsOwner();
 
-        $get = $this->getJson('/api/settings')->assertOk()->json();
-        $this->assertSame($original['kostName'], $get['kostName']);
+        // First call auto-creates a default settings row for this user.
+        $original = $this->getJson('/api/settings')->assertOk()->json();
+        $this->assertSame('StayFlow Residence', $original['kostName']);
 
         $updated = $original;
         $updated['reminderTemplate'] = 'smoke-template-'.time();
 
-        try {
-            $this->putJson('/api/settings', $updated)
-                ->assertOk()
-                ->assertJsonFragment(['reminderTemplate' => $updated['reminderTemplate']]);
+        $this->putJson('/api/settings', $updated)
+            ->assertOk()
+            ->assertJsonFragment(['reminderTemplate' => $updated['reminderTemplate']]);
 
-            $this->assertSame($updated['reminderTemplate'], Setting::find(1)->data['reminderTemplate']);
-        } finally {
-            // restore the original reminderTemplate so this test doesn't leave
-            // real settings mutated, even if an assertion above failed
-            $this->putJson('/api/settings', $original);
-        }
-
-        $this->assertSame($original['reminderTemplate'], Setting::find(1)->data['reminderTemplate']);
+        $this->assertSame(
+            $updated['reminderTemplate'],
+            Setting::where('user_id', $user->id)->first()->data['reminderTemplate']
+        );
     }
 }

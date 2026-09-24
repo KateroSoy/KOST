@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Room;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RoomModelTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_room_can_be_created_found_and_deleted(): void
     {
         $id = 'smoke-room-'.time();

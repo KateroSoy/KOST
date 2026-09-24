@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Models\Expense;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExpenseApiTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_expense_crud_endpoints(): void
     {
+        $this->actingAsOwner();
         $id = 'smoke-exp-'.time();
 
         $this->postJson('/api/expenses', [

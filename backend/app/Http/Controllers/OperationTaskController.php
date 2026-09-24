@@ -23,7 +23,18 @@ class OperationTaskController extends Controller {
         }));
     }
     public function store(Request $request) {
-        $data = $request->all();
+        $data = $request->validate([
+            'id' => 'required|string',
+            'propertyId' => 'sometimes|string',
+            'type' => 'required|string',
+            'title' => 'required|string',
+            'roomNumber' => 'required|string',
+            'priority' => 'required|string',
+            'status' => 'required|string',
+            'assignedTo' => 'required|string',
+            'estimatedCost' => 'sometimes|numeric',
+            'notes' => 'nullable|string',
+        ]);
         OperationTask::updateOrCreate(
             ['user_id' => $request->user()->id, 'custom_id' => $data['id']],
             [

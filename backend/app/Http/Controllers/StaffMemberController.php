@@ -19,7 +19,15 @@ class StaffMemberController extends Controller {
         }));
     }
     public function store(Request $request) {
-        $data = $request->all();
+        $data = $request->validate([
+            'id' => 'required|string',
+            'propertyId' => 'sometimes|string',
+            'name' => 'required|string',
+            'role' => 'required|string',
+            'phone' => 'required|string',
+            'email' => 'required|string',
+            'status' => 'required|string',
+        ]);
         StaffMember::updateOrCreate(
             ['user_id' => $request->user()->id, 'custom_id' => $data['id']],
             [

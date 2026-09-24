@@ -6,7 +6,11 @@ import {
   INITIAL_BILLS, 
   INITIAL_EXPENSES, 
   INITIAL_COMPLAINTS,
-  INITIAL_PROPERTIES
+  INITIAL_PROPERTIES,
+  INITIAL_BOOKINGS,
+  INITIAL_OPERATION_TASKS,
+  INITIAL_STAFF,
+  INITIAL_WEBSITE_CONFIGS
 } from './data';
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
@@ -67,6 +71,15 @@ const fetchWithAuth = async (resource: string, options: RequestInit = {}) => {
 
 export let isOfflineMode = false;
 
+// ─── Plan-lock notification (decouples api.ts from React state) ──────────────
+
+type PlanLockedHandler = () => void;
+let planLockedHandler: PlanLockedHandler | null = null;
+
+export const setPlanLockedHandler = (handler: PlanLockedHandler | null) => {
+  planLockedHandler = handler;
+};
+
 // ─── Auth API calls ───────────────────────────────────────────────────────────
 
 export interface AuthResult {
@@ -79,6 +92,8 @@ export interface AuthResult {
     role?: 'super_admin' | 'owner';
     status?: 'active' | 'suspended';
     plan?: 'basic' | 'pro';
+    effectivePlan?: 'basic' | 'pro';
+    expiresAt?: string | null;
   };
 }
 
@@ -132,6 +147,15 @@ export const authChangePassword = async (params: {
   if (!res.ok) {
     throw new Error(data?.message || (data?.errors ? Object.values(data.errors).flat().join(', ') : 'Gagal mengubah kata sandi'));
   }
+};
+
+export const authMe = async (): Promise<AuthResult['user'] & { email?: string }> => {
+  const res = await fetchWithAuth('/api/auth/me');
+  const data = await parseJsonResponse(res);
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || 'Gagal memuat data akun');
+  }
+  return data;
 };
 
 // ─── Super Admin API Calls ───────────────────────────────────────────────────
@@ -206,7 +230,217 @@ export const fetchPublicOwnerData = async (slug: string): Promise<PublicOwnerDat
   }
 };
 
+export interface PublicPropertyData {
+  property: Property;
+  rooms: Room[];
+  websiteConfig: import('./types').WebsiteConfig;
+}
+
+export const fetchPublicPropertyData = async (id: string): Promise<PublicPropertyData | null> => {
+  const res = await fetch(`/api/public/properties/${encodeURIComponent(id)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (res.status === 404) return null;
+  const data = await parseJsonResponse(res);
+  if (!res.ok) throw new Error(data?.error || 'Gagal memuat properti');
+  return data;
+};
+
+export const submitPublicBooking = async (propertyId: string, booking: Partial<import('./types').Booking>): Promise<void> => {
+  const res = await fetch(`/api/public/properties/${encodeURIComponent(propertyId)}/bookings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(booking),
+  });
+  const data = await parseJsonResponse(res);
+  if (!res.ok) throw new Error(data?.error || data?.message || 'Permintaan booking gagal dikirim.');
+};
+
+export const fetchReports = async (params: {
+  mode: 'month' | 'range';
+  month?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<import('./types').ReportsAggregate> => {
+  const query = new URLSearchParams();
+  query.set('mode', params.mode);
+  if (params.month) query.set('month', params.month);
+  if (params.startDate) query.set('startDate', params.startDate);
+  if (params.endDate) query.set('endDate', params.endDate);
+
+  if (getToken()) {
+    let res: Response | null = null;
+    let data: any = null;
+    try {
+      res = await fetchWithAuth(`/api/reports?${query.toString()}`);
+      data = await parseJsonResponse(res);
+    } catch {
+      // Network/timeout failure — fall through to the local computation below.
+    }
+
+    if (res?.ok) return data;
+
+    if (data?.code === 'PLAN_LOCKED') {
+      planLockedHandler?.();
+      throw new Error(data?.error || 'Gagal memuat laporan');
+    }
+  }
+
+  // No token (offline / "Coba Demo Interaktif") or a non-plan-lock server/network
+  // failure: compute the aggregate locally so the tab still works, mirroring the
+  // local fallback every other resource already has (bookings/operations/staff/website-configs).
+  return computeLocalReportsAggregate(params);
+};
+
+// ─── Client-side Reports aggregate (offline / demo fallback) ─────────────────
+// Mirrors backend/app/Http/Controllers/ReportController.php so the Laporan tab
+// still works without a backend session.
+
+const REPORT_MONTHS = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+];
+
+const reportMonthKey = (month: string): string => {
+  const [name, year] = month.split(' ');
+  const index = REPORT_MONTHS.indexOf(name);
+  const monthNum = index === -1 ? '06' : String(index + 1).padStart(2, '0');
+  return `${year || '2026'}-${monthNum}`;
+};
+
+const reportMonthLabelFromDate = (date: string): string | null => {
+  const parts = date.split('-');
+  if (parts.length < 2 || isNaN(Number(parts[0])) || isNaN(Number(parts[1]))) return null;
+  const monthIndex = Number(parts[1]) - 1;
+  if (monthIndex < 0 || monthIndex > 11) return null;
+  return `${REPORT_MONTHS[monthIndex]} ${parts[0]}`;
+};
+
+const reportTrendMonths = (selectedMonth: string): string[] => {
+  const [name, yearStr] = selectedMonth.split(' ');
+  const baseIndex = REPORT_MONTHS.indexOf(name);
+  const baseYear = Number(yearStr || 2026);
+  if (baseIndex === -1) return [selectedMonth];
+
+  const result: string[] = [];
+  for (let i = -1; i <= 1; i++) {
+    let mi = baseIndex + i;
+    let yr = baseYear;
+    if (mi < 0) { mi = 11; yr--; }
+    if (mi > 11) { mi = 0; yr++; }
+    result.push(`${REPORT_MONTHS[mi]} ${yr}`);
+  }
+  return result;
+};
+
+const computeLocalReportsAggregate = (params: {
+  mode: 'month' | 'range';
+  month?: string;
+  startDate?: string;
+  endDate?: string;
+}): import('./types').ReportsAggregate => {
+  const parseLocal = <T,>(key: string, fallback: T): T => {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : fallback;
+    } catch { return fallback; }
+  };
+
+  const allBills: Bill[] = parseLocal('kostos_bills', INITIAL_BILLS);
+  const allExpenses: Expense[] = parseLocal('kostos_expenses', INITIAL_EXPENSES);
+  const rooms: Room[] = parseLocal('kostos_rooms', INITIAL_ROOMS);
+
+  const selectedMonth = params.month || `${REPORT_MONTHS[5]} 2026`;
+
+  let activeBills: Bill[];
+  let activeExpenses: Expense[];
+  let trendAnchorMonth: string;
+
+  if (params.mode === 'range' && params.startDate && params.endDate) {
+    const { startDate, endDate } = params;
+    activeBills = allBills.filter(b => {
+      const date = b.paymentDate || b.dueDate;
+      return date >= startDate && date <= endDate;
+    });
+    activeExpenses = allExpenses.filter(e => e.date >= startDate && e.date <= endDate);
+    trendAnchorMonth = reportMonthLabelFromDate(endDate) || selectedMonth;
+  } else {
+    activeBills = allBills.filter(b => b.period === selectedMonth);
+    const activeMonthKey = reportMonthKey(selectedMonth);
+    activeExpenses = allExpenses.filter(e => e.date.startsWith(activeMonthKey));
+    trendAnchorMonth = selectedMonth;
+  }
+
+  const totalRevenue = activeBills
+    .filter(b => b.status === 'Lunas' || b.status === 'Sebagian')
+    .reduce((sum, b) => sum + b.paidAmount, 0);
+  const totalCosts = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const outstandingAmount = activeBills.reduce((sum, b) => sum + (b.totalAmount - b.paidAmount), 0);
+
+  const paidBillsCount = activeBills.filter(b => b.status === 'Lunas').length;
+  const unpaidBillsCount = activeBills.filter(b => b.status !== 'Lunas').length;
+
+  const occupancyRate = rooms.length > 0
+    ? (rooms.filter(r => r.status === 'Terisi' || r.status === 'Menunggak').length / rooms.length) * 100
+    : 0;
+
+  const trend = reportTrendMonths(trendAnchorMonth).map(m => {
+    const mKey = reportMonthKey(m);
+    const mBills = allBills.filter(b => b.period === m);
+    const mExpenses = allExpenses.filter(e => e.date.startsWith(mKey));
+    return {
+      name: m.split(' ')[0],
+      income: mBills.filter(b => b.status === 'Lunas' || b.status === 'Sebagian').reduce((s, b) => s + b.paidAmount, 0),
+      expense: mExpenses.reduce((s, e) => s + e.amount, 0),
+    };
+  });
+
+  const unpaidBills = activeBills.filter(b => b.status !== 'Lunas').map(b => ({
+    id: b.id,
+    roomNumber: b.roomNumber,
+    tenantName: b.tenantName,
+    paymentMethod: b.paymentMethod,
+    status: b.status,
+    remaining: b.totalAmount - b.paidAmount,
+  }));
+
+  return {
+    totalRevenue,
+    totalCosts,
+    actualProfit: totalRevenue - totalCosts,
+    outstandingAmount,
+    paidBillsCount,
+    unpaidBillsCount,
+    occupancyRate: Math.round(occupancyRate * 100) / 100,
+    roomStatusCounts: {
+      terisi: rooms.filter(r => r.status === 'Terisi' || r.status === 'Menunggak').length,
+      kosong: rooms.filter(r => r.status === 'Kosong').length,
+      perbaikan: rooms.filter(r => r.status === 'Perbaikan').length,
+    },
+    trend,
+    unpaidBills,
+  };
+};
+
 // ─── Data fetch (GET) — tries API, falls back to LocalStorage ─────────────────
+
+// Returns null when the fetch failed (so callers can fall back to cache),
+// or the (possibly empty) array on a genuine successful response.
+const fetchProResource = async (path: string): Promise<any[] | null> => {
+  try {
+    const res = await fetchWithAuth(path);
+    if (res.status === 403) {
+      const data = await parseJsonResponse(res).catch(() => null);
+      if (data?.code === 'PLAN_LOCKED') planLockedHandler?.();
+      return null;
+    }
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) ? data : null;
+  } catch {
+    return null;
+  }
+};
 
 export const fetchAllData = async () => {
   if (!getToken()) {
@@ -226,8 +460,8 @@ export const fetchAllData = async () => {
 
     isOfflineMode = false;
 
-    // Fetch all endpoints in parallel; properties endpoint may not exist on older deploys
-    const [settings, rooms, tenants, bills, expenses, complaints, propertiesResult] = await Promise.all([
+    // Fetch all endpoints in parallel
+    const [settings, rooms, tenants, bills, expenses, complaints, propertiesResult, bookingsResult, operationsResult, staffResult, websiteConfigsResult] = await Promise.all([
       healthRes.json(),
       fetchWithAuth('/api/rooms').then(r => r.json()),
       fetchWithAuth('/api/tenants').then(r => r.json()),
@@ -235,6 +469,10 @@ export const fetchAllData = async () => {
       fetchWithAuth('/api/expenses').then(r => r.json()),
       fetchWithAuth('/api/complaints').then(r => r.json()),
       fetchWithAuth('/api/properties').then(r => r.ok ? r.json() : []).catch(() => []),
+      fetchProResource('/api/bookings'),
+      fetchProResource('/api/operations'),
+      fetchProResource('/api/staff'),
+      fetchProResource('/api/website-configs'),
     ]);
 
     // Persist to localStorage for offline fallback
@@ -245,26 +483,33 @@ export const fetchAllData = async () => {
     localStorage.setItem('kostos_expenses', JSON.stringify(expenses));
     localStorage.setItem('kostos_complaints', JSON.stringify(complaints));
     
-    // Merge API properties with local ones (API is authoritative if it has records)
-    const properties: Property[] = Array.isArray(propertiesResult) && propertiesResult.length > 0
-      ? propertiesResult
-      : (() => {
-          try {
-            const raw = localStorage.getItem('kostos_properties');
-            return raw ? JSON.parse(raw) : INITIAL_PROPERTIES;
-          } catch { return INITIAL_PROPERTIES; }
-        })();
-    
-    if (Array.isArray(propertiesResult) && propertiesResult.length > 0) {
-      localStorage.setItem('kostos_properties', JSON.stringify(properties));
-    }
+    // This is the authenticated path (health check above already confirmed we're online), so
+    // the API result is authoritative: an empty array means the signed-in user genuinely has
+    // zero properties yet. Never substitute the bundled demo properties or a locally-cached
+    // value here — 'kostos_properties' also doubles as a generic UI-convenience cache written
+    // from in-memory state (including the pre-fetch demo fallback), so reading it back as a
+    // signal for "previously synced real data" is unreliable and can re-surface stale/demo rows.
+    const properties: Property[] = Array.isArray(propertiesResult) ? propertiesResult : [];
+    localStorage.setItem('kostos_properties', JSON.stringify(properties));
 
-    return { settings, rooms, tenants, bills, expenses, complaints, properties };
+    const bookings = bookingsResult !== null ? bookingsResult : JSON.parse(localStorage.getItem('kostos_bookings') || '[]');
+    const operations = operationsResult !== null ? operationsResult : JSON.parse(localStorage.getItem('kostos_operations') || '[]');
+    const staffList = staffResult !== null ? staffResult : JSON.parse(localStorage.getItem('kostos_staff') || '[]');
+    // Uses its own cache key (distinct from 'kostos_website_configs', which App.tsx uses for the
+    // propertyId-keyed Record it renders from) to avoid the two disagreeing on shape.
+    const websiteConfigs = websiteConfigsResult !== null ? websiteConfigsResult : JSON.parse(localStorage.getItem('kostos_website_configs_array') || '[]');
+
+    if (bookingsResult !== null) localStorage.setItem('kostos_bookings', JSON.stringify(bookings));
+    if (operationsResult !== null) localStorage.setItem('kostos_operations', JSON.stringify(operations));
+    if (staffResult !== null) localStorage.setItem('kostos_staff', JSON.stringify(staffList));
+    if (websiteConfigsResult !== null) localStorage.setItem('kostos_website_configs_array', JSON.stringify(websiteConfigs));
+
+    return { settings, rooms, tenants, bills, expenses, complaints, properties, bookings, operations, staffList, websiteConfigs };
 
   } catch (error) {
-    console.warn('⚠️ [Hybrid API] Backend tidak merespons. Mode offline.', error);
+    console.warn('⚠️ [Hybrid API] Backend tidak merespons.', error);
     isOfflineMode = true;
-    return getLocalStorageFallback();
+    throw error;
   }
 };
 
@@ -286,13 +531,17 @@ const getLocalStorageFallback = () => {
     expenses:   parseLocal('kostos_expenses',    INITIAL_EXPENSES),
     complaints: parseLocal('kostos_complaints',  INITIAL_COMPLAINTS),
     properties: parseLocal('kostos_properties',  INITIAL_PROPERTIES),
+    bookings:   parseLocal('kostos_bookings', INITIAL_BOOKINGS),
+    operations: parseLocal('kostos_operations', INITIAL_OPERATION_TASKS),
+    staffList:  parseLocal('kostos_staff', INITIAL_STAFF),
+    websiteConfigs: parseLocal('kostos_website_configs_array', Object.values(INITIAL_WEBSITE_CONFIGS)),
   };
 };
 
 // ─── Data sync (POST/PUT/PATCH/DELETE) ────────────────────────────────────────
 
 export const syncToBackend = async (endpoint: string, method: 'POST'|'PUT'|'PATCH'|'DELETE', data?: any) => {
-  if (isOfflineMode || !getToken()) return true;
+  if (!getToken()) return true; // Explicit unauthenticated demo mode
 
   try {
     const res = await fetchWithAuth(`/api/${endpoint}`, {
@@ -306,9 +555,11 @@ export const syncToBackend = async (endpoint: string, method: 'POST'|'PUT'|'PATC
     }
     if (!res.ok) {
       const errData = await parseJsonResponse(res).catch(() => null);
+      if (errData?.code === 'PLAN_LOCKED') planLockedHandler?.();
       console.warn(`[Hybrid API] Gagal sinkronisasi /api/${endpoint}`, errData?.error || '');
       return false;
     }
+    isOfflineMode = false;
     return true;
   } catch (error) {
     console.warn(`[Hybrid API] Koneksi terputus saat sinkronisasi /api/${endpoint}.`);

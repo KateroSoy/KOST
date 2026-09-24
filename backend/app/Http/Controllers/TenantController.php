@@ -100,6 +100,16 @@ class TenantController extends Controller
             } else {
                 $rentAmount = $room?->pricePerMonth ?: ($room?->price ?? ($tenant->rentAmount ?? 0));
                 $dueDateDay = Setting::defaultDueDateDay($userId);
+                $billStart = \Illuminate\Support\Carbon::parse($tenant->moveInDate ?: $now->toDateString())->startOfDay();
+                if ($billStart->lt($now->copy()->startOfDay())) {
+                    $billStart = $now->copy()->startOfDay();
+                }
+                $dueMonth = $billStart->copy()->startOfMonth();
+                $dueDate = $dueMonth->copy()->day(min($dueDateDay, $dueMonth->daysInMonth));
+                if ($dueDate->lt($billStart)) {
+                    $dueMonth = $dueMonth->addMonth();
+                    $dueDate = $dueMonth->copy()->day(min($dueDateDay, $dueMonth->daysInMonth));
+                }
 
                 Bill::create([
                     'id'           => 'bill-auto-' . (int) round(microtime(true) * 1000),
@@ -111,7 +121,7 @@ class TenantController extends Controller
                     'rentalType'   => 'Bulanan',
                     'stayDuration' => 1,
                     'period'       => self::MONTHS_ID[$now->month - 1] . ' ' . $now->year,
-                    'dueDate'      => sprintf('%04d-%02d-%02d', $now->year, $now->month, $dueDateDay),
+                    'dueDate'      => $dueDate->toDateString(),
                     'rentAmount'   => $rentAmount,
                     'electricityCharge' => 0,
                     'waterCharge'  => 0,

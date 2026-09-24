@@ -17,7 +17,7 @@ class Room extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id', 'user_id', 'number', 'status', 'housekeepingStatus', 'type',
+        'id', 'user_id', 'propertyId', 'number', 'status', 'housekeepingStatus', 'type',
         'price', 'pricePerDay', 'pricePerMonth', 'pricePerWeek',
         'rentalTypesAllowed', 'floor', 'size', 'maxGuests',
         'facilities', 'images', 'description',

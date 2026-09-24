@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Landmark, FileText, Database, Building2, Save, ShieldCheck, Eye, EyeOff, Phone, Lock, Plus, Layers, ExternalLink, Copy, Check, Trash2, MapPin, Globe } from 'lucide-react';
+import { Bank, FileText, Database, Buildings, FloppyDisk, ShieldCheck, Eye, EyeSlash, Phone, Lock, Plus, Stack, ArrowUpRight, Copy, Check, Trash, MapPin, Globe } from '@phosphor-icons/react';
 import { KostSettings, Property, PropertyType } from '../types';
 import { authChangePassword } from '../api';
+import { ElegantSelect } from './ElegantSelect';
+import { generateId } from '../utils';
 
 interface SettingsViewProps {
   kostSettings: KostSettings;
@@ -149,7 +151,7 @@ export function SettingsView({
       triggerSuccessBubble(`✓ Properti "${propName}" berhasil diperbarui!`);
     } else {
       const newProp: Property = {
-        id: `prop-${Date.now()}`,
+        id: generateId('prop'),
         name: propName,
         type: propType,
         slug: propName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
@@ -271,14 +273,14 @@ export function SettingsView({
       )}
 
       {/* Main Settings Panel Wrapper Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs text-slate-800">
+      <div className="flex flex-col md:flex-row gap-6 bg-white rounded-[32px] p-4 sm:p-6 shadow-sm text-[#171A18] animate-fade-in-up">
         
         {/* Left Column Sidebar (Menu Segments picker) (3/12 width) */}
         <div className="md:col-span-3 space-y-1.5 pt-2">
           {[
-            { id: 'properties', label: 'Multi Penginapan', icon: Building2 },
-            { id: 'profile', label: 'Profil Utama', icon: Layers },
-            { id: 'bank', label: 'Rekening Bank', icon: Landmark },
+            { id: 'properties', label: 'Multi Penginapan', icon: Buildings },
+            { id: 'profile', label: 'Profil Utama', icon: Stack },
+            { id: 'bank', label: 'Rekening Bank', icon: Bank },
             { id: 'template', label: 'Template WA', icon: FileText },
             { id: 'backup', label: 'Backup & Restore', icon: Database },
             { id: 'account', label: 'Akun & Keamanan', icon: ShieldCheck },
@@ -289,8 +291,8 @@ export function SettingsView({
               <button
                 key={seg.id}
                 onClick={() => setActiveSegment(seg.id as any)}
-                className={`w-full p-2.5 rounded-xl text-left text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  isSel ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                className={`w-full p-4 sm:p-3 rounded-2xl text-left text-sm sm:text-xs font-bold transition-all duration-300 flex items-center gap-3 sm:gap-2 cursor-pointer ${
+                  isSel ? 'bg-[#173B30] text-white shadow-sm' : 'text-[#6E746F] hover:text-[#171A18] hover:bg-[#F5F1E8]'
                 }`}
               >
                 <Icon className="h-4 w-4 opacity-80" />
@@ -300,16 +302,16 @@ export function SettingsView({
           })}
         </div>
 
-        {/* Right Column Body details form based on segment (9/12 width) */}
-        <div className="md:col-span-9 p-1 md:border-l border-slate-100 md:pl-6">
+        {/* Right Column Body details form based on segment */}
+        <div className="flex-1 p-1 md:pl-6">
           
           {/* 1. MULTI-PROPERTY MANAGEMENT SUB-SECTION */}
           {activeSegment === 'properties' && (
             <div className="space-y-6 text-xs font-medium">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[rgba(23,59,48,0.06)] pb-4">
                 <div>
-                  <h3 className="font-extrabold text-slate-950 text-sm">Kelola Multi Tempat Penginapan & Cabang</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Kelola daftar tempat penginapan, homestay, villa, dan kost bulanan di akun ini.</p>
+                  <h3 className="font-extrabold text-[#171A18] text-sm">Kelola Multi Tempat Penginapan & Cabang</h3>
+                  <p className="text-[10px] text-[#6E746F] mt-0.5">Kelola daftar tempat penginapan, homestay, villa, dan kost bulanan di akun ini.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -320,55 +322,54 @@ export function SettingsView({
                       navigator.clipboard.writeText(catalogUrl);
                       triggerSuccessBubble('✓ Link Beranda Katalog Anda berhasil disalin!');
                     }}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer text-xs shrink-0"
+                    className="px-3 py-2 bg-[#FBF9F5] hover:bg-[rgba(23,59,48,0.06)] text-[#171A18] font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer text-xs shrink-0"
                   >
-                    <Copy className="h-3.5 w-3.5" /> Salin Link Katalog
+                    <Copy weight="duotone" className="h-3.5 w-3.5" /> Salin Link Katalog
                   </button>
                   <button
                     onClick={handleOpenAddModal}
-                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer text-xs shrink-0"
+                    className="px-4 py-2 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer text-xs shrink-0"
                   >
-                    <Plus className="h-4 w-4" /> + Tambah Penginapan
+                     Tambah Penginapan
                   </button>
                 </div>
               </div>
 
-              {/* Properties Grid */}
               <div className="grid grid-cols-1 gap-4">
                 {properties.map(p => (
-                  <div key={p.id} className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-teal-300 transition-colors">
+                  <div key={p.id} className="bg-white rounded-[24px] p-4 border border-zinc-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="h-12 w-12 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center shrink-0 font-bold overflow-hidden">
+                      <div className="h-14 w-14 rounded-2xl bg-[#F5F1E8] text-[#173B30] flex items-center justify-center shrink-0 font-bold overflow-hidden">
                         {p.coverImage ? (
                           <img src={p.coverImage} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
-                          <Building2 className="h-6 w-6" />
+                          <Buildings weight="duotone" className="h-6 w-6" />
                         )}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-extrabold text-sm text-slate-900">{p.name}</h4>
-                          <span className="text-[9px] font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full">{p.type}</span>
-                          <span className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{p.city}</span>
+                          <h4 className="font-extrabold text-sm text-[#171A18]">{p.name}</h4>
+                          <span className="text-[9px] font-bold bg-[rgba(23,59,48,0.1)] text-[#0f2720] px-2 py-0.5 rounded-full">{p.type}</span>
+                          <span className="text-[9px] font-bold bg-[rgba(23,59,48,0.06)] text-[#171A18] px-2 py-0.5 rounded-full">{p.city}</span>
                         </div>
-                        <p className="text-[10px] text-slate-500 truncate mt-1 flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                        <p className="text-[10px] text-[#6E746F] truncate mt-1 flex items-center gap-1">
+                          <MapPin weight="duotone" className="h-3 w-3 text-[#6E746F] shrink-0" />
                           <span>{p.address}</span>
                         </p>
-                        <p className="text-[10px] text-teal-700 font-bold mt-1">
+                        <p className="text-[10px] text-[#0f2720] font-bold mt-1">
                           WA Contact: {p.whatsapp} • Mulai Rp {(p.startPriceDay || 180000).toLocaleString('id-ID')}/mlm
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200">
+                    <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-zinc-100">
                       <button
                         type="button"
                         onClick={() => handleCopyLink(p.id)}
-                        className="py-1.5 px-3 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer"
+                        className="py-2 px-3 bg-[#F5F1E8] hover:bg-[#E5DCC5] text-[#171A18] font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
                         title="Salin Link Landing Page Publik"
                       >
-                        {copiedPropId === p.id ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-slate-500" />}
+                        {copiedPropId === p.id ? <Check weight="duotone" className="h-3.5 w-3.5 text-emerald-600" /> : <Copy weight="duotone" className="h-3.5 w-3.5 text-[#6E746F]" />}
                         <span>{copiedPropId === p.id ? 'Tersalin' : 'Salin Link'}</span>
                       </button>
 
@@ -386,7 +387,7 @@ export function SettingsView({
                       <button
                         type="button"
                         onClick={() => handleOpenEditModal(p)}
-                        className="py-1.5 px-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                        className="py-1.5 px-3 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
                       >
                         Edit
                       </button>
@@ -402,7 +403,7 @@ export function SettingsView({
                           }}
                           className="py-1.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash  weight="duotone" className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </div>
@@ -416,28 +417,28 @@ export function SettingsView({
           {activeSegment === 'profile' && (
             <form onSubmit={handleSaveProfile} className="space-y-4 text-xs font-medium">
               <div>
-                <h3 className="font-extrabold text-slate-950 text-sm">Profil Akun & Instalasi Utama</h3>
-                <p className="text-[10px] text-slate-400 mt-1">Mengubah identitas nama penginapan utama yang muncul di header dan kwitansi penagihan.</p>
+                <h3 className="font-extrabold text-[#171A18] text-sm">Profil Akun & Instalasi Utama</h3>
+                <p className="text-[10px] text-[#6E746F] mt-1">Mengubah identitas nama penginapan utama yang muncul di header dan kwitansi penagihan.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 block">NAMA INSTALASI PENGINAPAN *</label>
+                  <label className="text-[10px] font-extrabold text-[#6E746F] block">NAMA INSTALASI PENGINAPAN *</label>
                   <input
                     type="text"
                     required
-                    className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-bold"
+                    className="w-full bg-white p-3.5 border-none shadow-sm rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#173B30] font-bold bg-[#FBF9F5]"
                     value={kostName}
                     onChange={(e) => setKostName(e.target.value)}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 block">NAMA PEMILIK / PENGELOLA *</label>
+                  <label className="text-[10px] font-extrabold text-[#6E746F] block">NAMA PEMILIK / PENGELOLA *</label>
                   <input
                     type="text"
                     required
-                    className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl focus:outline-none"
+                    className="w-full bg-[#FBF9F5] p-3.5 border-none shadow-sm rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#173B30] font-bold"
                     value={kostOwnerName}
                     onChange={(e) => setKostOwnerName(e.target.value)}
                   />
@@ -445,20 +446,20 @@ export function SettingsView({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block">TELEPON WHATSAPP (UTAMA) *</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block">TELEPON WHATSAPP (UTAMA) *</label>
                 <input
                   type="text"
                   required
-                  className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl focus:outline-none font-mono"
+                  className="w-full bg-[#FBF9F5] p-3.5 border-none shadow-sm rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#173B30] font-mono font-bold"
                   value={kostPhone}
                   onChange={(e) => setKostPhone(e.target.value)}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block">ALAMAT LENGKAP UTAMA</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block">ALAMAT LENGKAP UTAMA</label>
                 <textarea
-                  className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl focus:outline-none"
+                  className="w-full bg-[#FBF9F5] p-3.5 border-none shadow-sm rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#173B30] font-bold"
                   rows={3}
                   value={kostAddress}
                   onChange={(e) => setKostAddress(e.target.value)}
@@ -468,9 +469,9 @@ export function SettingsView({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  className="px-5 py-2.5 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                 >
-                  <Save className="h-4.5 w-4.5" /> Simpan Profil
+                  <FloppyDisk weight="duotone" className="h-4.5 w-4.5" /> Simpan Profil
                 </button>
               </div>
             </form>
@@ -480,32 +481,32 @@ export function SettingsView({
           {activeSegment === 'bank' && (
             <form onSubmit={handleSaveBank} className="space-y-4 text-xs font-medium">
               <div>
-                <h3 className="font-extrabold text-slate-950 text-sm">Rekening Penerima Setoran</h3>
-                <p className="text-[10px] text-slate-400 mt-1">Detail transfer yang otomatis dicetak di bagian bawah kwitansi invoice anak kost.</p>
+                <h3 className="font-extrabold text-[#171A18] text-sm">Rekening Penerima Setoran</h3>
+                <p className="text-[10px] text-[#6E746F] mt-1">Detail transfer yang otomatis dicetak di bagian bawah kwitansi invoice anak kost.</p>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1 col-span-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 block">PILIH BANK *</label>
-                  <select
-                    className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl font-bold"
+                  <label className="text-[10px] font-extrabold text-[#6E746F] block">PILIH BANK *</label>
+                  <ElegantSelect
                     value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                  >
-                    <option value="BCA">BCA (Bank Central Asia)</option>
-                    <option value="Mandiri">Mandiri</option>
-                    <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
-                    <option value="BNI">BNI</option>
-                    <option value="Standard">Other Bank</option>
-                  </select>
+                    onChange={(val) => setBankName(val)}
+                    options={[
+                      { value: 'BCA', label: 'BCA (Bank Central Asia)' },
+                      { value: 'Mandiri', label: 'Mandiri' },
+                      { value: 'BRI', label: 'BRI (Bank Rakyat Indonesia)' },
+                      { value: 'BNI', label: 'BNI' },
+                      { value: 'Standard', label: 'Other Bank' }
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1 col-span-2">
-                  <label className="text-[10px] font-extrabold text-slate-500 block">NOMOR REKENING *</label>
+                  <label className="text-[10px] font-extrabold text-[#6E746F] block">NOMOR REKENING *</label>
                   <input
                     type="text"
                     required
-                    className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl font-mono font-bold"
+                    className="w-full bg-white p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl font-mono font-bold"
                     value={bankNumber}
                     onChange={(e) => setBankNumber(e.target.value)}
                   />
@@ -513,11 +514,11 @@ export function SettingsView({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block font-bold">ATAS NAMA PEMILIK REK *</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block font-bold">ATAS NAMA PEMILIK REK *</label>
                 <input
                   type="text"
                   required
-                  className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl"
+                  className="w-full bg-white p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl"
                   value={bankOwner}
                   onChange={(e) => setBankOwner(e.target.value)}
                 />
@@ -526,9 +527,9 @@ export function SettingsView({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-5 py-2.5 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <Save className="h-4.5 w-4.5" /> Simpan Nomor Rekening
+                  <FloppyDisk weight="duotone" className="h-4.5 w-4.5" /> Simpan Nomor Rekening
                 </button>
               </div>
             </form>
@@ -538,8 +539,8 @@ export function SettingsView({
           {activeSegment === 'template' && (
             <form onSubmit={handleSaveTemplate} className="space-y-4 text-xs font-medium">
               <div>
-                <h3 className="font-extrabold text-slate-950 text-sm">Mesin Template Pesan WhatsApp</h3>
-                <p className="text-[10px] text-slate-400 mt-1">Sesuaikan bahasa broadcast pengingat tagihan. Gunakan variabel bracket di bawah ini:</p>
+                <h3 className="font-extrabold text-[#171A18] text-sm">Mesin Template Pesan WhatsApp</h3>
+                <p className="text-[10px] text-[#6E746F] mt-1">Sesuaikan bahasa broadcast pengingat tagihan. Gunakan variabel bracket di bawah ini:</p>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
@@ -550,16 +551,16 @@ export function SettingsView({
                   { tag: '{jumlah}', desc: 'Total Nilai Rupiah' },
                   { tag: '{tanggal}', desc: 'Jatuh Tempo' }
                 ].map((item) => (
-                  <span key={item.tag} className="px-2 py-1 bg-slate-100 text-slate-650 rounded-lg text-[9px] font-mono">
-                    <strong className="text-teal-700">{item.tag}</strong>: {item.desc}
+                  <span key={item.tag} className="px-2 py-1 bg-[#FBF9F5] text-[#6E746F] rounded-lg text-[9px] font-mono">
+                    <strong className="text-[#0f2720]">{item.tag}</strong>: {item.desc}
                   </span>
                 ))}
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-extrabold text-slate-550 block">DRAF FORMAT CHAT BROADCAST *</label>
+                <label className="text-[10px] font-extrabold text-[#171A18] block">DRAF FORMAT CHAT BROADCAST *</label>
                 <textarea
-                  className="w-full bg-slate-50 p-3 border border-slate-205 rounded-2xl text-xs font-mono font-medium leading-relaxed"
+                  className="w-full bg-white p-3 border border-[rgba(23,59,48,0.15)] rounded-2xl text-xs font-mono font-medium leading-relaxed"
                   rows={6}
                   value={reminderTemplate}
                   onChange={(e) => setReminderTemplate(e.target.value)}
@@ -569,9 +570,9 @@ export function SettingsView({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-5 py-2.5 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <Save className="h-4.5 w-4.5" /> Simpan Template WA
+                  <FloppyDisk weight="duotone" className="h-4.5 w-4.5" /> Simpan Template WA
                 </button>
               </div>
             </form>
@@ -579,32 +580,32 @@ export function SettingsView({
 
           {/* BACKUP & RESTORE DATABASE SUB-SECTION */}
           {activeSegment === 'backup' && (
-            <div className="space-y-5 text-xs text-slate-700">
+            <div className="space-y-5 text-xs text-[#171A18]">
               <div>
-                <h3 className="font-extrabold text-slate-950 text-sm">Amankan Penyalinan Ekspor Data</h3>
-                <p className="text-[10px] text-slate-400 mt-1">StayFlow berjalan penuh 100% luring/offline di peramban browser Anda. Unduh salinan database Anda untuk diunggah kapan saja.</p>
+                <h3 className="font-extrabold text-[#171A18] text-sm">Amankan Penyalinan Ekspor Data</h3>
+                <p className="text-[10px] text-[#6E746F] mt-1">Unduh cadangan data inti Anda. Pemulihan akan mengganti kamar, penghuni, tagihan, pengeluaran, dan keluhan saat ini.</p>
               </div>
 
-              <div className="p-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-4">
-                <div className="flex justify-between items-center bg-white p-3 border border-slate-100 rounded-xl">
+              <div className="p-4 border border-dashed border-[rgba(23,59,48,0.15)] rounded-2xl bg-white/50 space-y-4">
+                <div className="flex justify-between items-center bg-white p-3 border border-[rgba(23,59,48,0.06)] rounded-xl">
                   <div>
-                    <h5 className="font-extrabold text-xs text-slate-900">1. Amankan File Ekspor (.JSON)</h5>
-                    <p className="text-[9px] text-slate-400">Unduh data semua kamar, penyewa, & pembukuan kas.</p>
+                    <h5 className="font-extrabold text-xs text-[#171A18]">1. Amankan File Ekspor (.JSON)</h5>
+                    <p className="text-[9px] text-[#6E746F]">Unduh data semua kamar, penyewa, & pembukuan kas.</p>
                   </div>
                   <button
                     onClick={onExportBackup}
-                    className="py-2 px-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg cursor-pointer"
+                    className="py-2 px-3.5 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold rounded-lg cursor-pointer"
                   >
                     Ekspor Database
                   </button>
                 </div>
 
-                <div className="flex justify-between items-center bg-white p-3 border border-slate-100 rounded-xl">
+                <div className="flex justify-between items-center bg-white p-3 border border-[rgba(23,59,48,0.06)] rounded-xl">
                   <div>
-                    <h5 className="font-extrabold text-xs text-slate-900">2. Unggah Salinan Cadangan (Restore)</h5>
-                    <p className="text-[9px] text-slate-400">Pilih file backup (.json) yang diunduh sebelumnya.</p>
+                    <h5 className="font-extrabold text-xs text-[#171A18]">2. Unggah Salinan Cadangan (Restore)</h5>
+                    <p className="text-[9px] text-[#6E746F]">Pilih file backup (.json) yang diunduh sebelumnya.</p>
                   </div>
-                  <label className="py-2 px-3.5 bg-teal-600 hover:bg-teal-700 text-cyan-50 font-bold rounded-lg cursor-pointer text-center whitespace-nowrap">
+                  <label className="py-2 px-3.5 bg-[#173B30] hover:bg-[#0f2720] text-cyan-50 font-bold rounded-lg cursor-pointer text-center whitespace-nowrap">
                     Pilih File Recovery
                     <input
                       type="file"
@@ -622,24 +623,24 @@ export function SettingsView({
           {activeSegment === 'account' && (
             <div className="space-y-6 text-xs">
               <div>
-                <h3 className="font-extrabold text-slate-950 text-sm">Akun & Keamanan</h3>
-                <p className="text-[10px] text-slate-400 mt-1">Ubah nomor WhatsApp login dan kata sandi akun StayFlow Anda.</p>
+                <h3 className="font-extrabold text-[#171A18] text-sm">Akun & Keamanan</h3>
+                <p className="text-[10px] text-[#6E746F] mt-1">Ubah nomor WhatsApp login dan kata sandi akun StayFlow Anda.</p>
               </div>
 
-              <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
-                <div className="h-9 w-9 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
-                  <Phone className="h-4 w-4 text-teal-700" />
+              <div className="flex items-center gap-3 p-3 bg-white border border-[rgba(23,59,48,0.15)] rounded-2xl">
+                <div className="h-9 w-9 rounded-xl bg-[rgba(23,59,48,0.1)] flex items-center justify-center shrink-0">
+                  <Phone weight="duotone" className="h-4 w-4 text-[#0f2720]" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-400 font-semibold">NOMOR LOGIN AKTIF</p>
-                  <p className="font-extrabold text-slate-800 text-sm">{currentCredPhone || kostSettings.whatsapp || '—'}</p>
+                  <p className="text-[10px] text-[#6E746F] font-semibold">NOMOR LOGIN AKTIF</p>
+                  <p className="font-extrabold text-[#171A18] text-sm">{currentCredPhone || kostSettings.whatsapp || '—'}</p>
                 </div>
               </div>
 
               <form onSubmit={handleChangePhone} className="space-y-3">
-                <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                  <Phone className="h-3.5 w-3.5 text-slate-500" />
-                  <h4 className="font-extrabold text-slate-700 text-xs">Ubah Nomor WhatsApp / Login</h4>
+                <div className="flex items-center gap-2 pb-1 border-b border-[rgba(23,59,48,0.06)]">
+                  <Phone weight="duotone" className="h-3.5 w-3.5 text-[#6E746F]" />
+                  <h4 className="font-extrabold text-[#171A18] text-xs">Ubah Nomor WhatsApp / Login</h4>
                 </div>
 
                 {phoneError && (
@@ -650,23 +651,23 @@ export function SettingsView({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-extrabold text-slate-500 block">NOMOR BARU *</label>
+                    <label className="text-[10px] font-extrabold text-[#6E746F] block">NOMOR BARU *</label>
                     <input
                       type="tel"
                       required
                       placeholder="Contoh: 081234567890"
-                      className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full bg-white p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-[#173B30]"
                       value={newPhone}
                       onChange={(e) => setNewPhone(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-extrabold text-slate-500 block">KONFIRMASI NOMOR BARU *</label>
+                    <label className="text-[10px] font-extrabold text-[#6E746F] block">KONFIRMASI NOMOR BARU *</label>
                     <input
                       type="tel"
                       required
                       placeholder="Ulangi nomor baru"
-                      className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full bg-white p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-[#173B30]"
                       value={confirmPhone}
                       onChange={(e) => setConfirmPhone(e.target.value)}
                     />
@@ -675,17 +676,17 @@ export function SettingsView({
 
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-4 py-2 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <Save className="h-3.5 w-3.5" /> Simpan Nomor
+                  <FloppyDisk weight="duotone" className="h-3.5 w-3.5" /> Simpan Nomor
                 </button>
               </form>
 
               {/* CHANGE PASSWORD FORM */}
-              <form onSubmit={handleChangePassword} className="space-y-3 pt-4 border-t border-slate-200">
-                <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                  <Lock className="h-3.5 w-3.5 text-slate-500" />
-                  <h4 className="font-extrabold text-slate-700 text-xs">Ubah Kata Sandi Akun</h4>
+              <form onSubmit={handleChangePassword} className="space-y-3 pt-4 border-t border-[rgba(23,59,48,0.15)]">
+                <div className="flex items-center gap-2 pb-1 border-b border-[rgba(23,59,48,0.06)]">
+                  <Lock weight="duotone" className="h-3.5 w-3.5 text-[#6E746F]" />
+                  <h4 className="font-extrabold text-[#171A18] text-xs">Ubah Kata Sandi Akun</h4>
                 </div>
 
                 {passwordError && (
@@ -695,12 +696,12 @@ export function SettingsView({
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 block">KATA SANDI LAMA *</label>
+                  <label className="text-[10px] font-extrabold text-[#6E746F] block">KATA SANDI LAMA *</label>
                   <input
                     type="password"
                     required
                     placeholder="Masukkan kata sandi lama Anda"
-                    className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full bg-white p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#173B30]"
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
                   />
@@ -708,23 +709,23 @@ export function SettingsView({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-extrabold text-slate-500 block">KATA SANDI BARU *</label>
+                    <label className="text-[10px] font-extrabold text-[#6E746F] block">KATA SANDI BARU *</label>
                     <input
                       type="password"
                       required
                       placeholder="Minimal 6 karakter"
-                      className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full bg-white p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#173B30]"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-extrabold text-slate-500 block">KONFIRMASI KATA SANDI BARU *</label>
+                    <label className="text-[10px] font-extrabold text-[#6E746F] block">KONFIRMASI KATA SANDI BARU *</label>
                     <input
                       type="password"
                       required
                       placeholder="Ulangi kata sandi baru"
-                      className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full bg-white p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#173B30]"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
@@ -733,9 +734,9 @@ export function SettingsView({
 
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  className="px-4 py-2 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                 >
-                  <Lock className="h-3.5 w-3.5" /> Ubah Kata Sandi
+                  <Lock weight="duotone" className="h-3.5 w-3.5" /> Ubah Kata Sandi
                 </button>
               </form>
             </div>
@@ -747,9 +748,9 @@ export function SettingsView({
 
       {/* ADD / EDIT PROPERTY MODAL */}
       {showPropertyModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full border border-slate-200 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-[#171A18]/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full border border-[rgba(23,59,48,0.15)] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+            <div className="bg-[#173B30] text-white p-5 flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-teal-400">Form Penginapan</span>
                 <h3 className="text-lg font-black">{editingProp ? `Edit: ${editingProp.name}` : '+ Tambah Tempat Penginapan Baru'}</h3>
@@ -765,137 +766,139 @@ export function SettingsView({
             <form onSubmit={handleSavePropertySubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2 space-y-1">
-                  <label className="block text-[10px] font-extrabold text-slate-600">NAMA TEMPAT PENGINAPAN *</label>
+                  <label className="block text-[10px] font-extrabold text-[#6E746F]">NAMA TEMPAT PENGINAPAN *</label>
                   <input
                     type="text"
                     required
                     placeholder="Contoh: StayFlow Malioboro Villa"
                     value={propName}
                     onChange={(e) => setPropName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3 py-2 font-bold focus:ring-2 focus:ring-[#173B30] focus:outline-none"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-extrabold text-slate-600">TIPE PENGINAPAN *</label>
-                  <select
+                  <label className="block text-[10px] font-extrabold text-[#6E746F]">TIPE PENGINAPAN *</label>
+                  <ElegantSelect
                     value={propType}
-                    onChange={(e) => setPropType(e.target.value as PropertyType)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  >
-                    <option value="Kost">Kost Bulanan</option>
-                    <option value="Homestay">Homestay Harian</option>
-                    <option value="Guesthouse">Guesthouse</option>
-                    <option value="Villa">Villa / Resort</option>
-                    <option value="Hotel">Hotel / Lodge</option>
-                  </select>
+                    onChange={(val) => setPropType(val as PropertyType)}
+                    options={[
+                      { value: 'Kost', label: 'Kost Bulanan' },
+                      { value: 'Coliving', label: 'Coliving' },
+                      { value: 'Apartemen', label: 'Apartemen' },
+                      { value: 'Villa', label: 'Villa / Resort' },
+                      { value: 'Guest House', label: 'Guest House' },
+                      { value: 'Homestay', label: 'Homestay' },
+                      { value: 'Small Hotel', label: 'Small Hotel / Boutique Lodge' }
+                    ]}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-extrabold text-slate-600">KOTA / LOKASI *</label>
+                  <label className="block text-[10px] font-extrabold text-[#6E746F]">KOTA / LOKASI *</label>
                   <input
                     type="text"
                     required
                     placeholder="Contoh: Yogyakarta / Sleman / Bali"
                     value={propCity}
                     onChange={(e) => setPropCity(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3 py-2 focus:ring-2 focus:ring-[#173B30] focus:outline-none"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-extrabold text-slate-600">WHATSAPP PENGELOLA *</label>
+                  <label className="block text-[10px] font-extrabold text-[#6E746F]">WHATSAPP PENGELOLA *</label>
                   <input
                     type="text"
                     required
                     placeholder="0812xxxxxxxx"
                     value={propPhone}
                     onChange={(e) => setPropPhone(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3 py-2 font-mono focus:ring-2 focus:ring-[#173B30] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-extrabold text-slate-600">ALAMAT LENGKAP *</label>
+                <label className="block text-[10px] font-extrabold text-[#6E746F]">ALAMAT LENGKAP *</label>
                 <textarea
                   required
                   rows={2}
                   placeholder="Jl. Malioboro No. 12, Danurejan, Yogyakarta"
                   value={propAddress}
                   onChange={(e) => setPropAddress(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3 py-2 focus:ring-2 focus:ring-[#173B30] focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-extrabold text-slate-600">DESKRIPSI SHOWCASE</label>
+                <label className="block text-[10px] font-extrabold text-[#6E746F]">DESKRIPSI SHOWCASE</label>
                 <textarea
                   rows={2}
                   placeholder="Homestay harian eksklusif 3 menit ke Malioboro..."
                   value={propDesc}
                   onChange={(e) => setPropDesc(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3 py-2 focus:ring-2 focus:ring-[#173B30] focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-extrabold text-slate-600">START HARGA HARIAN (RP)</label>
+                  <label className="block text-[10px] font-extrabold text-[#6E746F]">START HARGA HARIAN (RP)</label>
                   <input
                     type="number"
                     value={propPriceDay}
                     onChange={(e) => setPropPriceDay(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3 py-2 font-bold focus:ring-2 focus:ring-[#173B30] focus:outline-none"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-extrabold text-slate-600">START HARGA BULANAN (RP)</label>
+                  <label className="block text-[10px] font-extrabold text-[#6E746F]">START HARGA BULANAN (RP)</label>
                   <input
                     type="number"
                     value={propPriceMonth}
                     onChange={(e) => setPropPriceMonth(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3 py-2 font-bold focus:ring-2 focus:ring-[#173B30] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-extrabold text-slate-600">FASILITAS UTAMA (PISAH DENGAN KOMA)</label>
+                <label className="block text-[10px] font-extrabold text-[#6E746F]">FASILITAS UTAMA (PISAH DENGAN KOMA)</label>
                 <input
                   type="text"
                   placeholder="AC, WiFi Dedicated, Water Heater, Smart Key"
                   value={propFacilities}
                   onChange={(e) => setPropFacilities(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3 py-2 focus:ring-2 focus:ring-[#173B30] focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-extrabold text-slate-600">URL FOTO COVER (OPSIONAL)</label>
+                <label className="block text-[10px] font-extrabold text-[#6E746F]">URL FOTO COVER (OPSIONAL)</label>
                 <input
                   type="text"
                   placeholder="https://images.unsplash.com/..."
                   value={propCover}
                   onChange={(e) => setPropCover(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-[11px] focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3 py-2 font-mono text-[11px] focus:ring-2 focus:ring-[#173B30] focus:outline-none"
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-200 flex gap-3">
+              <div className="pt-3 border-t border-[rgba(23,59,48,0.15)] flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowPropertyModal(false)}
-                  className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                  className="w-1/3 py-3 bg-[#FBF9F5] hover:bg-[rgba(23,59,48,0.06)] text-[#171A18] font-bold text-xs rounded-xl cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="w-2/3 py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                  className="w-2/3 py-3 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
                 >
                   {editingProp ? 'Simpan Perubahan' : 'Tambah Tempat Penginapan'}
                 </button>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Coins, CheckCircle, Receipt, User, ArrowRight, Share2, Clipboard, MessageSquare, Plus, Clock, Landmark, Smartphone, X } from 'lucide-react';
+import { Coins, CheckCircle, Receipt, User, ArrowRight, ShareNetwork, Clipboard, ChatTeardropText, Plus, Clock, Bank, DeviceMobile, X } from '@phosphor-icons/react';
 import { Bill, Tenant, Room } from '../types';
+import { ElegantSelect } from './ElegantSelect';
 
 interface PaymentsViewProps {
   bills: Bill[];
@@ -8,7 +9,7 @@ interface PaymentsViewProps {
   rooms: Room[];
   selectedBillForPayment: Bill | null;
   onClosePaymentForm: () => void;
-  onRecordPayment: (billId: string, amountPaid: number, method: string, date: string, notes?: string) => void;
+  onRecordPayment: (billId: string, amountPaid: number, method: string, date: string, notes?: string) => Promise<void>;
 }
 
 export function PaymentsView({
@@ -25,6 +26,7 @@ export function PaymentsView({
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [paymentNotes, setPaymentNotes] = useState<string>('');
   const [formError, setFormError] = useState<string>('');
+  const [saving, setSaving] = useState(false);
 
   // Sync state when parent passes a bill to focus on
   useEffect(() => {
@@ -52,8 +54,9 @@ export function PaymentsView({
     }
   };
 
-  const handlePaymentSubmit = (e: React.FormEvent) => {
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!activeBillSelection) {
       setFormError('Silakan pilih salah satu tagihan yang belum lunas!');
       return;
@@ -69,8 +72,15 @@ export function PaymentsView({
       return;
     }
 
-    // Call mutation in parent
-    onRecordPayment(activeBillSelection.id, paymentAmount, paymentMethod, paymentDate, paymentNotes);
+    setSaving(true);
+    try {
+      await onRecordPayment(activeBillSelection.id, paymentAmount, paymentMethod, paymentDate, paymentNotes);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Pembayaran gagal disimpan.');
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
     
     // Save last state for showing success message!
     setLastRecordedBill({
@@ -107,35 +117,35 @@ export function PaymentsView({
       
       {/* SUCCESS SCREEN CONFIRMATION */}
       {successRecorded && lastRecordedBill && (
-        <section id="payment-success-screen" className="bg-white p-6 sm:p-8 border border-slate-200/80 rounded-3xl shadow-xl space-y-6 text-center animate-in zoom-in-95 duration-150">
+        <section id="payment-success-screen" className="bg-white p-6 sm:p-8 border border-[rgba(23,59,48,0.15)]/80 rounded-3xl shadow-xl space-y-6 text-center animate-in zoom-in-95 duration-150">
           
           <div className="mx-auto h-16 w-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center border-4 border-emerald-100">
-            <CheckCircle className="h-10 w-10 animate-bounce-once" />
+            <CheckCircle weight="duotone" className="h-10 w-10 animate-bounce-once" />
           </div>
 
           <div className="space-y-1">
-            <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Pembayaran Berhasil Dicatat!</h3>
-            <p className="text-xs text-slate-400">Kas masuk terupdate otomatis dan data kwitansi aman tersimpan.</p>
+            <h3 className="text-xl font-extrabold text-[#171A18] tracking-tight">Pembayaran Berhasil Dicatat!</h3>
+            <p className="text-xs text-[#6E746F]">Kas masuk terupdate otomatis dan data kwitansi aman tersimpan.</p>
           </div>
 
           {/* Mini receipt detail */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-xs font-semibold text-slate-700 space-y-2">
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest pb-1 border-b border-slate-200/60 font-black">Informasi Setoran</p>
+          <div className="bg-white border border-[rgba(23,59,48,0.15)]/80 rounded-2xl p-4 text-xs font-semibold text-[#171A18] space-y-2">
+            <p className="text-[10px] text-[#6E746F] uppercase tracking-widest pb-1 border-b border-[rgba(23,59,48,0.15)]/60 font-black">Informasi Setoran</p>
             <div className="flex justify-between">
-              <span className="text-slate-400">Penyewa Kost:</span>
-              <span className="text-slate-900 font-bold">{lastRecordedBill.tenantName}</span>
+              <span className="text-[#6E746F]">Penyewa Kost:</span>
+              <span className="text-[#171A18] font-bold">{lastRecordedBill.tenantName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Nomor Kamar:</span>
-              <span className="text-teal-700 font-extrabold">Kamar {lastRecordedBill.roomNumber}</span>
+              <span className="text-[#6E746F]">Nomor Kamar:</span>
+              <span className="text-[#0f2720] font-extrabold">Kamar {lastRecordedBill.roomNumber}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Nilai Setoran:</span>
-              <span className="text-slate-900 font-extrabold text-sm">{formatIDR(paymentAmount)}</span>
+              <span className="text-[#6E746F]">Nilai Setoran:</span>
+              <span className="text-[#171A18] font-extrabold text-sm">{formatIDR(paymentAmount)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Cara Bayar / Tanggal:</span>
-              <span className="text-slate-500 font-bold">{lastRecordedBill.paymentMethod} • {lastRecordedBill.paymentDate}</span>
+              <span className="text-[#6E746F]">Cara Bayar / Tanggal:</span>
+              <span className="text-[#6E746F] font-bold">{lastRecordedBill.paymentMethod} • {lastRecordedBill.paymentDate}</span>
             </div>
           </div>
 
@@ -149,7 +159,7 @@ export function PaymentsView({
                 });
               }}
               className={`w-full py-2.5 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                copiedMsg ? 'bg-emerald-600 text-white' : 'bg-slate-950 hover:bg-slate-800 text-white'
+                copiedMsg ? 'bg-emerald-600 text-white' : 'bg-[#171A18] hover:bg-[#0f2720] text-white'
               }`}
             >
               <Clipboard className="h-4 w-4" /> {copiedMsg ? '✓ Berhasil Dicopy ke Clipboard!' : 'Copy Bukti WA untuk Anak Kost'}
@@ -157,7 +167,7 @@ export function PaymentsView({
 
             <button
               onClick={handleResetForm}
-              className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl cursor-pointer"
+              className="w-full py-2.5 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold text-xs rounded-xl cursor-pointer"
             >
               Catat Pembayaran Lain
             </button>
@@ -167,20 +177,20 @@ export function PaymentsView({
 
       {/* REGULAR RECORD PAYMENT FORM */}
       {!successRecorded && (
-        <section className="bg-white border border-slate-200/85 shadow-xl rounded-3xl p-6 space-y-6">
-          <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+        <section className="bg-white border border-[rgba(23,59,48,0.15)]/85 shadow-xl rounded-3xl p-6 space-y-6">
+          <div className="flex justify-between items-center pb-3 border-b border-[rgba(23,59,48,0.06)]">
             <div className="flex items-center gap-2">
-              <Coins className="h-5 w-5 text-teal-600" />
+              <Coins className="h-5 w-5 text-[#173B30]" />
               <div>
-                <h3 className="font-extrabold text-slate-950 text-base leading-none">Formulir Catat Pembayaran</h3>
-                <p className="text-[10px] text-slate-400 mt-1">Gunakan untuk memasukkan uang sewa dari penghuni.</p>
+                <h3 className="font-extrabold text-[#171A18] text-base leading-none">Formulir Catat Pembayaran</h3>
+                <p className="text-[10px] text-[#6E746F] mt-1">Gunakan untuk memasukkan uang sewa dari penghuni.</p>
               </div>
             </div>
             <button 
               onClick={onClosePaymentForm}
-              className="p-1 rounded-full text-slate-300 hover:text-slate-500 cursor-pointer"
+              className="p-1 rounded-full text-[#A8B7A1] hover:text-[#6E746F] cursor-pointer"
             >
-              <X className="h-4.5 w-4.5" />
+              <X weight="duotone" className="h-4.5 w-4.5" />
             </button>
           </div>
 
@@ -193,67 +203,63 @@ export function PaymentsView({
 
             {/* Select unpaid tagihan */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold text-slate-500 block">PILIH KAMAR / BELUM LUNAS *</label>
+              <label className="text-[10px] font-extrabold text-[#6E746F] block">PILIH KAMAR / BELUM LUNAS *</label>
               
               {unpaidBills.length === 0 ? (
-                <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center bg-slate-50">
-                  <p className="text-slate-400 italic">Semua tagihan bulan ini sudah Lunas penuh! Tidak ada tunggakan sewa.</p>
+                <div className="p-4 border border-dashed border-[rgba(23,59,48,0.15)] rounded-xl text-center bg-white">
+                  <p className="text-[#6E746F] italic">Semua tagihan bulan ini sudah Lunas penuh! Tidak ada tunggakan sewa.</p>
                 </div>
               ) : (
-                <select
-                  required
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+                <ElegantSelect
                   value={activeBillSelection?.id || ''}
-                  onChange={(e) => handleActiveBillChange(e.target.value)}
-                >
-                  <option value="">-- Pilih Kamar & Tenant --</option>
-                  {unpaidBills.map((b) => {
+                  onChange={(val) => handleActiveBillChange(val)}
+                  placeholder="-- Pilih Kamar & Tenant --"
+                  options={unpaidBills.map((b) => {
                     const outstanding = b.totalAmount - b.paidAmount;
-                    return (
-                      <option key={b.id} value={b.id} className="font-semibold text-slate-800">
-                        Kmr {b.roomNumber} - {b.tenantName} (Periode {b.period}, Tunggakan: {formatIDR(outstanding)})
-                      </option>
-                    );
+                    return {
+                      value: b.id,
+                      label: `Kmr ${b.roomNumber} - ${b.tenantName} (Periode ${b.period}, Tunggakan: ${formatIDR(outstanding)})`
+                    };
                   })}
-                </select>
+                />
               )}
             </div>
 
             {activeBillSelection && (
-              <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-2xl block text-[11px] text-slate-600 space-y-1 font-semibold leading-relaxed">
-                <p className="font-extrabold text-slate-800 text-[12px] pb-1 border-b border-slate-200">Rincian Invoice Terpilih:</p>
-                <p className="flex justify-between"><span className="text-slate-400">Total Nilai Tagihan:</span> <span className="font-mono text-slate-800">{formatIDR(activeBillSelection.totalAmount)}</span></p>
-                <p className="flex justify-between"><span className="text-slate-400">Telah Dicicil Sebelumnya:</span> <span className="font-mono text-slate-800">{formatIDR(activeBillSelection.paidAmount)}</span></p>
-                <p className="flex justify-between pt-1 border-t border-slate-200 border-dashed font-bold text-slate-900"><span className="text-slate-500">Tunggakan Bersih:</span> <span className="font-mono text-rose-600">{formatIDR(activeBillSelection.totalAmount - activeBillSelection.paidAmount)}</span></p>
+              <div className="p-3 bg-white/70 border border-[rgba(23,59,48,0.06)] rounded-2xl block text-[11px] text-[#6E746F] space-y-1 font-semibold leading-relaxed">
+                <p className="font-extrabold text-[#171A18] text-[12px] pb-1 border-b border-[rgba(23,59,48,0.15)]">Rincian Invoice Terpilih:</p>
+                <p className="flex justify-between"><span className="text-[#6E746F]">Total Nilai Tagihan:</span> <span className="font-mono text-[#171A18]">{formatIDR(activeBillSelection.totalAmount)}</span></p>
+                <p className="flex justify-between"><span className="text-[#6E746F]">Telah Dicicil Sebelumnya:</span> <span className="font-mono text-[#171A18]">{formatIDR(activeBillSelection.paidAmount)}</span></p>
+                <p className="flex justify-between pt-1 border-t border-[rgba(23,59,48,0.15)] border-dashed font-bold text-[#171A18]"><span className="text-[#6E746F]">Tunggakan Bersih:</span> <span className="font-mono text-rose-600">{formatIDR(activeBillSelection.totalAmount - activeBillSelection.paidAmount)}</span></p>
               </div>
             )}
 
             {/* Input payment parameters */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold text-slate-500 block">JUMLAH SETORAN RUPIAH *</label>
+              <label className="text-[10px] font-extrabold text-[#6E746F] block">JUMLAH SETORAN RUPIAH *</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-extrabold">Rp</span>
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#6E746F] font-extrabold">Rp</span>
                 <input
                   type="number"
                   required
                   title="Jumlah Setoran"
-                  className="w-full bg-slate-50 pl-10 pr-3 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-800 font-extrabold"
+                  className="w-full bg-white pl-10 pr-3 py-3 border border-[rgba(23,59,48,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#173B30] text-[#171A18] font-extrabold"
                   value={paymentAmount || ''}
                   onChange={(e) => setPaymentAmount(Number(e.target.value))}
                 />
               </div>
-              <p className="text-[10px] text-slate-400">Pembayaran parsial/nyicil diperbolehkan (otomatis mengubah status tagihan menjadi 'Sebagian').</p>
+              <p className="text-[10px] text-[#6E746F]">Pembayaran parsial/nyicil diperbolehkan (otomatis mengubah status tagihan menjadi 'Sebagian').</p>
             </div>
 
             {/* Selector cara bayar */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold text-slate-500 block">METODE PEMBAYARAN *</label>
+              <label className="text-[10px] font-extrabold text-[#6E746F] block">METODE PEMBAYARAN *</label>
               <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
                 {[
-                  { name: 'Transfer Bank', icon: Landmark, color: 'border-teal-500 text-teal-800 bg-teal-50' },
-                  { name: 'Tunai / Cash', icon: Coins, color: 'border-slate-200 hover:border-slate-350' },
-                  { name: 'QRIS', icon: CheckCircle, color: 'border-slate-200 hover:border-slate-350' },
-                  { name: 'E-Wallet', icon: Smartphone, color: 'border-slate-200 hover:border-slate-350' }
+                  { name: 'Transfer Bank', icon: Bank, color: 'border-[#173B30] text-[#0f2720] bg-[#F5F1E8]' },
+                  { name: 'Tunai / Cash', icon: Coins, color: 'border-[rgba(23,59,48,0.15)] hover:border-[rgba(23,59,48,0.20)]' },
+                  { name: 'QRIS', icon: CheckCircle, color: 'border-[rgba(23,59,48,0.15)] hover:border-[rgba(23,59,48,0.20)]' },
+                  { name: 'E-Wallet', icon: DeviceMobile, color: 'border-[rgba(23,59,48,0.15)] hover:border-[rgba(23,59,48,0.20)]' }
                 ].map((m) => {
                   const isSelected = paymentMethod === m.name;
                   const Icon = m.icon;
@@ -263,7 +269,7 @@ export function PaymentsView({
                       key={m.name}
                       onClick={() => setPaymentMethod(m.name)}
                       className={`p-2 border rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${
-                        isSelected ? 'border-2 border-teal-600 bg-teal-50 text-teal-950 font-bold' : 'border-slate-200 text-slate-500 bg-white hover:bg-slate-50'
+                        isSelected ? 'border-2 border-teal-600 bg-[#F5F1E8] text-teal-950 font-bold' : 'border-[rgba(23,59,48,0.15)] text-[#6E746F] bg-white hover:bg-white'
                       }`}
                     >
                       <Icon className="h-4.5 w-4.5 opacity-80" />
@@ -276,41 +282,42 @@ export function PaymentsView({
 
             {/* Setoran tanggal */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold text-slate-500 block">TANGGAL PENYETORAN</label>
+              <label className="text-[10px] font-extrabold text-[#6E746F] block">TANGGAL PENYETORAN</label>
               <input
                 type="date"
                 required
-                className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl text-slate-850 focus:outline-none"
+                className="w-full bg-white p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl text-[#171A18] focus:outline-none"
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold text-slate-500 block">CATATAN TRANSFER / REMARKS</label>
+              <label className="text-[10px] font-extrabold text-[#6E746F] block">CATATAN TRANSFER / REMARKS</label>
               <input
                 type="text"
                 placeholder="Contoh: Bukti transfer BCA terlampir via WA"
-                className="w-full bg-slate-50 p-2.5 border border-slate-200 rounded-xl text-slate-800 focus:outline-none"
+                className="w-full bg-white p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl text-[#171A18] focus:outline-none"
                 value={paymentNotes}
                 onChange={(e) => setPaymentNotes(e.target.value)}
               />
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex gap-2 justify-end">
+            <div className="pt-4 border-t border-[rgba(23,59,48,0.06)] flex gap-2 justify-end">
               <button
                 type="button"
                 onClick={onClosePaymentForm}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl cursor-pointer text-xs"
+                className="px-4 py-2 bg-[#FBF9F5] hover:bg-[rgba(23,59,48,0.06)] text-[#6E746F] font-bold rounded-xl cursor-pointer text-xs"
               >
                 Batal
               </button>
               <button
                 type="submit"
                 id="btn-confirm-payment-record"
-                className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl transition-all shadow shadow-teal-500/10 cursor-pointer text-xs flex items-center gap-1.5"
+                disabled={saving}
+                className="px-5 py-2.5 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold rounded-xl transition-all shadow shadow-teal-500/10 cursor-pointer text-xs flex items-center gap-1.5"
               >
-                <Plus className="h-4 w-4" /> Simpan Kwitansi Bayar
+                 {saving ? 'Menyimpan...' : 'Simpan Kwitansi Bayar'}
               </button>
             </div>
           </form>

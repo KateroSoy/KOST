@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Copy, Check, ExternalLink, X, Calendar, User, Smartphone } from 'lucide-react';
+import { ChatTeardropText, Copy, Check, ArrowUpRight, X, CalendarBlank, User, DeviceMobile } from '@phosphor-icons/react';
 import { Bill, KostSettings, Tenant } from '../types';
 
 interface WhatsAppReminderModalProps {
@@ -71,56 +71,56 @@ export function WhatsAppReminderModal({ bill, kostSettings, tenants = [], onClos
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl w-full max-w-md border border-slate-300 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-[#173B30]/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-150">
+      <div className="glass-panel rounded-3xl w-full max-w-md border border-white/60 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Head */}
-        <div className="p-5 bg-teal-900 text-white flex justify-between items-center shrink-0">
+        <div className="p-5 bg-gradient-to-r from-teal-900 to-emerald-900 text-white flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-teal-350" />
+            <ChatTeardropText weight="duotone" className="h-5 w-5 text-teal-350" />
             <span className="font-extrabold text-base">Reminder Invoice: Kmr {bill.roomNumber}</span>
           </div>
           <button 
             onClick={onClose}
             className="p-1 rounded-full text-teal-300 hover:text-white hover:bg-teal-800 cursor-pointer"
           >
-            <X className="h-5 w-5" />
+            <X weight="duotone" className="h-5 w-5" />
           </button>
         </div>
 
         {/* Modal body */}
-        <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs text-slate-800 font-semibold">
+        <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs text-[#171A18] font-semibold">
           <div>
-            <h4 className="font-extrabold text-sm text-slate-950">Pratinjau Pengingat Sesi Tagihan</h4>
-            <p className="text-[10px] text-slate-400 mt-1">Gunakan template di bawah ini untuk broadcast langsung ke penyewa.</p>
+            <h4 className="font-extrabold text-sm text-[#171A18]">Pratinjau Pengingat Sesi Tagihan</h4>
+            <p className="text-[10px] text-[#6E746F] mt-1">Gunakan template di bawah ini untuk broadcast langsung ke penyewa.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-slate-600">
-            <div className="p-2 border border-slate-100 bg-slate-50/50 rounded-xl space-y-0.5">
-              <span className="text-[9px] text-slate-400 uppercase">PENYEWA KOST:</span>
-              <p className="font-extrabold text-slate-900">{bill.tenantName}</p>
-              <p className="text-[9px] text-slate-500">📱 {getTenantPhone()}</p>
+          <div className="grid grid-cols-2 gap-3 text-[#6E746F]">
+            <div className="p-2 border border-[rgba(23,59,48,0.06)] bg-white/50 rounded-xl space-y-0.5">
+              <span className="text-[9px] text-[#6E746F] uppercase">PENYEWA KOST:</span>
+              <p className="font-extrabold text-[#171A18]">{bill.tenantName}</p>
+              <p className="text-[9px] text-[#6E746F]">📱 {getTenantPhone()}</p>
             </div>
-            <div className="p-2 border border-slate-100 bg-slate-50/50 rounded-xl space-y-0.5">
-              <span className="text-[9px] text-slate-400 uppercase">JUMLAH TUNGGAKAN:</span>
-              <p className="font-extrabold text-teal-700">{formatIDR(bill.totalAmount - bill.paidAmount)}</p>
-              <p className="text-[9px] text-slate-500">Kamar {bill.roomNumber} • {bill.period}</p>
+            <div className="p-2 border border-[rgba(23,59,48,0.06)] bg-white/50 rounded-xl space-y-0.5">
+              <span className="text-[9px] text-[#6E746F] uppercase">JUMLAH TUNGGAKAN:</span>
+              <p className="font-extrabold text-[#0f2720]">{formatIDR(bill.totalAmount - bill.paidAmount)}</p>
+              <p className="text-[9px] text-[#6E746F]">Kamar {bill.roomNumber} • {bill.period}</p>
             </div>
           </div>
 
           {/* Realistic WhatsApp Green Bubble Preview Box */}
           <div className="space-y-1.5">
-            <span className="text-[10px] uppercase font-bold text-slate-450 block tracking-widest">Pratinjau SMS/WA (Chat Bubble):</span>
+            <span className="text-[10px] uppercase font-bold text-[#6E746F] block tracking-widest">Pratinjau SMS/WA (Chat Bubble):</span>
             <div className="p-4 bg-[url('https://user-images.githubusercontent.com/15075759/145195045-8f63ab9d-7f72-463d-82d2-c4bc089856df.png')] bg-repeat bg-center rounded-2xl border border-emerald-400/30 shadow-inner flex flex-col justify-end min-h-[160px]">
               
               {/* WhatsApp chat bubble */}
-              <div className="ml-auto bg-[#dcf8c6] text-slate-900 rounded-2xl rounded-tr-none p-3 max-w-[90%] relative shadow-xs flex flex-col justify-between">
-                <p className="whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-slate-800 font-medium font-serif">
+              <div className="ml-auto bg-[#dcf8c6] text-[#171A18] rounded-2xl rounded-tr-none p-3 max-w-[90%] relative shadow-xs flex flex-col justify-between">
+                <p className="whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-[#171A18] font-medium font-serif">
                   {formattedMessage}
                 </p>
                 
                 {/* Check ticks */}
-                <div className="flex justify-end items-center gap-1 mt-1 text-[8px] text-slate-400 font-sans font-normal">
+                <div className="flex justify-end items-center gap-1 mt-1 text-[8px] text-[#6E746F] font-sans font-normal">
                   <span>{new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                   <span className="text-[#34b7f1] font-bold">✓✓</span>
                 </div>
@@ -132,18 +132,18 @@ export function WhatsAppReminderModal({ bill, kostSettings, tenants = [], onClos
         </div>
 
         {/* Modal footer control bar */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-2 shrink-0">
+        <div className="p-4 bg-white/50 border-t border-white/40 flex flex-col sm:flex-row gap-2 shrink-0">
           <button
             onClick={handleCopy}
             className={`flex-1 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-              copied ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
+              copied ? 'bg-emerald-600 text-white' : 'bg-[rgba(23,59,48,0.06)] text-[#171A18] hover:bg-[rgba(23,59,48,0.1)]'
             }`}
           >
             {copied ? (
               <>✓ Pengingat Berhasil Dicopy!</>
             ) : (
               <>
-                <Copy className="h-4 w-4" /> Salin Pesan Manual
+                <Copy weight="duotone" className="h-4 w-4" /> Salin Pesan Manual
               </>
             )}
           </button>
@@ -154,7 +154,7 @@ export function WhatsAppReminderModal({ bill, kostSettings, tenants = [], onClos
             rel="noopener noreferrer referrer"
             className="flex-1 py-2.5 bg-[#25d366] hover:bg-[#20ba5a] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm text-center"
           >
-            <Smartphone className="h-4 w-4" /> Buka WhatsApp Web <ExternalLink className="h-3 w-3" />
+            <DeviceMobile weight="duotone" className="h-4 w-4" /> Buka WhatsApp Web <ArrowUpRight weight="duotone" className="h-3 w-3" />
           </a>
         </div>
 

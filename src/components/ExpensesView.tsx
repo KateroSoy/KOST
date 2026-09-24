@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { TrendingDown, Plus, Search, Calendar, Landmark, DollarSign, Filter, Trash2, X, AlertTriangle, ArrowUpRight, BarChart3 } from 'lucide-react';
+import { TrendDown, Plus, MagnifyingGlass, CalendarBlank, Bank, CurrencyDollar, Faders, Trash, X, Warning, ArrowUpRight, ChartBar } from '@phosphor-icons/react';
 import { Expense, ExpenseCategory } from '../types';
+import { generateId } from '../utils';
 
 interface ExpensesViewProps {
   expenses: Expense[];
@@ -17,7 +18,7 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
   // Add Expense form state
   const [expCategory, setExpCategory] = useState<ExpenseCategory>('Listrik');
   const [expDesc, setExpDesc] = useState('');
-  const [expDate, setExpDate] = useState('2026-06-01');
+  const [expDate, setExpDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [expAmount, setExpAmount] = useState(150000);
   const [expNotes, setExpNotes] = useState('');
   const [formError, setFormError] = useState('');
@@ -30,11 +31,11 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
     switch (cat) {
       case 'Listrik': return { val: '⚡', color: 'bg-amber-100 text-amber-800' };
       case 'Air': return { val: '💧', color: 'bg-indigo-100 text-indigo-800' };
-      case 'Internet': return { val: '🌐', color: 'bg-blue-100 text-blue-800' };
+      case 'Internet': return { val: '🌐', color: 'bg-[#E5DCC5] text-blue-800' };
       case 'Kebersihan': return { val: '🧹', color: 'bg-emerald-100 text-emerald-800' };
       case 'Perbaikan': return { val: '🛠️', color: 'bg-orange-100 text-orange-850' };
       case 'Keamanan': return { val: '🛡️', color: 'bg-rose-100 text-rose-800' };
-      case 'Perabot': return { val: '🛏️', color: 'bg-slate-150 text-slate-800' };
+      case 'Perabot': return { val: '🛏️', color: 'bg-[#E5DCC5] text-[#171A18]' };
       default: return { val: '✏️', color: 'bg-purple-100 text-purple-800' };
     }
   };
@@ -47,7 +48,7 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
     }
 
     const newExpense: Expense = {
-      id: `expense-${Date.now()}`,
+      id: generateId('expense'),
       category: expCategory,
       description: expDesc,
       date: expDate,
@@ -61,6 +62,7 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
     setExpDesc('');
     setExpCategory('Listrik');
     setExpAmount(150000);
+    setExpDate(new Date().toISOString().slice(0, 10));
     setExpNotes('');
     setFormError('');
     setShowAddForm(false);
@@ -128,97 +130,92 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
     <div className="space-y-6 max-w-7xl mx-auto">
       
       {/* 1. SECTIONS HEADER STATS */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in-up">
         {/* Metric 1: Total Bulan Ini */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 flex justify-between items-center hover:border-slate-300 transition-all">
-          <div>
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Total Pengeluaran Bulan Ini</span>
-            <h3 className="text-xl font-extrabold text-rose-600 font-mono mt-1">{formatIDR(totalThisMonth)}</h3>
-            <p className="text-[9px] text-slate-400 mt-1">Operasional tercatat pada {selectedMonth}</p>
+        <div className="bg-white p-6 rounded-[28px] shadow-sm flex flex-col justify-between">
+          <span className="text-xs font-bold text-[#6E746F] uppercase tracking-wider">Total Pengeluaran</span>
+          <div className="mt-4">
+            <h3 className="text-2xl font-black text-[#171A18]">{formatIDR(totalThisMonth)}</h3>
+            <p className="text-xs text-[#6E746F] mt-1">{selectedMonth}</p>
           </div>
-          <span className="p-3 bg-rose-50 text-rose-600 rounded-2xl"><TrendingDown className="h-6 w-6" /></span>
         </div>
 
         {/* Metric 2: Category Pengeluaran Tertinggi */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 flex justify-between items-center">
-          <div>
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Alokasi Biaya Tertinggi</span>
-            <h4 className="text-base font-extrabold text-slate-900 mt-1">
-              {highestSpendingCategory} ({formatIDR(highestSpendingValue)})
+        <div className="bg-white p-6 rounded-[28px] shadow-sm flex flex-col justify-between">
+          <span className="text-xs font-bold text-[#6E746F] uppercase tracking-wider">Kategori Tertinggi</span>
+          <div className="mt-4">
+            <h4 className="text-xl font-black text-[#171A18] truncate">
+              {highestSpendingCategory}
             </h4>
-            <p className="text-[9px] text-slate-400 mt-1">Tipe pembiayaan paling dominan diserap</p>
+            <p className="text-xs text-[#6E746F] mt-1">{formatIDR(highestSpendingValue)}</p>
           </div>
-          <span className="p-3 bg-amber-50 text-amber-700 rounded-2xl"><BarChart3 className="h-6 w-6" /></span>
         </div>
 
-        {/* Metric 3: Rekomedasi efisiensi */}
-        <div className="bg-slate-900 text-teal-100 p-5 rounded-3xl relative overflow-hidden">
-          <span className="absolute right-[-10px] top-[-10px] text-white opacity-5 text-6xl font-black">💡</span>
-          <span className="text-[10px] text-teal-400 font-bold uppercase tracking-wider block">Tips Efisiensi StayFlow</span>
-          <p className="text-[11px] text-slate-300 mt-1.5 leading-relaxed font-medium">
-            Service AC secara berkala {selectedMonth} terbukti mengurangi beban tagihan listrik token kost hingga 15%.
-          </p>
+        {/* Metric 3: Add Button Shortcut */}
+        <div 
+          onClick={() => setShowAddForm(true)}
+          className="bg-[#173B30] p-6 rounded-[28px] shadow-sm flex flex-col justify-between items-center text-white cursor-pointer hover:bg-[#0f2720] transition-colors"
+        >
+          <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center mb-2">
+            
+          </div>
+          <span className="text-sm font-bold">Catat Pengeluaran</span>
         </div>
       </section>
 
-      {/* 2. DUAL COLUMN DETAILS AND TRANSACTIONS GRID */}
+      {/* 2. TRANSACTIONS & BREAKDOWN */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column (8/12 length): Expenses tables listing */}
         <div className="lg:col-span-8 space-y-4">
           
-          {/* Listing Header Controls */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-1">
-            {/* Search */}
-            <div className="relative flex-1">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <Search className="h-4 w-4" />
-              </span>
+          <div className="flex flex-col gap-3">
+            <div className="relative w-full">
+              <MagnifyingGlass weight="duotone" className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#6E746F]" />
               <input
                 type="text"
-                placeholder="Cari rincian pengeluaran..."
-                className="w-full bg-white text-xs pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-800 transition-all font-semibold"
+                placeholder="Cari pengeluaran..."
+                className="w-full pl-12 pr-4 py-3.5 bg-white rounded-2xl text-sm text-[#171A18] placeholder-[#6E746F] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#173B30] transition-all"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            {/* Quick Filter Category Select dropdown */}
-            <select
-              className="px-3.5 py-2 bg-white text-xs text-slate-700 font-bold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
-              value={selectedCategoryFilter}
-              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-            >
-              <option value="Semua">Semua Kategori</option>
-              {ALL_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-            >
-              <Plus className="h-4 w-4" /> Catat Pengeluaran
-            </button>
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar">
+              {['Semua', ...ALL_CATEGORIES].map((cat) => {
+                const isActive = selectedCategoryFilter === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategoryFilter(cat)}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all cursor-pointer shadow-sm ${
+                      isActive
+                        ? 'bg-[#173B30] text-white shadow-md shadow-[#173b30]/20'
+                        : 'bg-white text-[#6E746F] hover:text-[#171A18]'
+                    }`}
+                  >
+                    {cat === 'Semua' ? 'Semua Kategori' : cat}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* List display */}
           {filteredExpenses.length === 0 ? (
-            <div id="expenses-empty-state" className="p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-xs">
-              <span className="text-4xl">🧾</span>
-              <h3 className="text-sm font-black text-slate-700 mt-3">Sirkulasi Kas Bersih</h3>
-              <p className="text-[10px] text-slate-400 mt-1 mb-5">
-                Belum ada pengeluaran dicatatkan untuk filter kategori "{selectedCategoryFilter}" atau pencarian "{searchQuery}" pada periode {selectedMonth}.
+            <div className="p-8 text-center bg-white rounded-[28px] shadow-sm">
+              <span className="text-4xl block mb-2">🧾</span>
+              <h3 className="text-sm font-bold text-[#171A18]">Belum Ada Catatan</h3>
+              <p className="text-xs text-[#6E746F] mt-1 mb-4">
+                Tidak ada data untuk periode {selectedMonth} dengan filter ini.
               </p>
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategoryFilter('Semua');
                 }}
-                className="py-1.5 px-4 bg-teal-600 text-white font-bold text-[10px] rounded-lg cursor-pointer"
+                className="py-2 px-4 bg-[#173B30] text-white font-bold text-xs rounded-xl"
               >
-                Clear Filters
+                Reset Filter
               </button>
             </div>
           ) : (
@@ -226,24 +223,23 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
               {filteredExpenses.map((exp) => {
                 const uiTheme = getCategoryTheme(exp.category);
                 return (
-                  <div key={exp.id} className="p-4 border border-slate-200 bg-white rounded-2xl flex justify-between items-center transition-all hover:border-slate-350">
-                    <div className="flex items-center gap-3">
-                      <span className={`h-11 w-11 rounded-full flex items-center justify-center text-lg ${uiTheme.color}`}>
+                  <div key={exp.id} className="p-4 bg-white rounded-[28px] shadow-sm flex justify-between items-center">
+                    <div className="flex items-center gap-4 overflow-hidden pr-2">
+                      <span className={`shrink-0 h-14 w-14 rounded-2xl flex items-center justify-center text-xl ${uiTheme.color}`}>
                         {uiTheme.val}
                       </span>
-                      <div>
-                        <p className="font-extrabold text-xs text-slate-900">{exp.description}</p>
-                        <p className="text-[9px] text-slate-400 font-semibold uppercase">{exp.category} • {exp.date}</p>
+                      <div className="min-w-0">
+                        <p className="font-bold text-base text-[#171A18] truncate">{exp.description}</p>
+                        <p className="text-xs text-[#6E746F] font-medium mt-0.5 truncate">{exp.category} • {exp.date}</p>
                         {exp.notes && (
-                          <p className="text-[9px] text-slate-500 font-serif italic mt-0.5">“{exp.notes}”</p>
+                          <p className="text-[10px] text-[#6E746F] italic mt-1 truncate">“{exp.notes}”</p>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 text-right">
-                      <div>
-                        <p className="font-black text-red-600 text-xs font-mono">-{formatIDR(exp.amount)}</p>
-                        <span className="text-[9px] font-bold text-slate-400">Kas Keluar</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <p className="font-extrabold text-[#171A18] text-sm">{formatIDR(exp.amount)}</p>
                       </div>
                       <button
                         onClick={() => {
@@ -251,10 +247,9 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
                             onDeleteExpense(exp.id);
                           }
                         }}
-                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-rose-50 rounded-lg cursor-pointer transition-all"
-                        title="Hapus Pengeluaran"
+                        className="h-10 w-10 flex items-center justify-center text-[#A8B7A1] hover:text-rose-500 bg-[#F5F1E8] hover:bg-rose-50 rounded-full cursor-pointer transition-colors"
                       >
-                        <Trash2 className="h-4.5 w-4.5" />
+                        <Trash  weight="duotone" className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -265,30 +260,32 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
 
         </div>
 
-        {/* Right Column (4/12 length): Category breakdown breakdown values */}
-        <div className="lg:col-span-4 bg-white border border-slate-200/80 rounded-3xl p-5 shadow-xs space-y-4">
-          <h4 className="text-xs font-extrabold text-slate-900 tracking-tight border-b border-slate-100 pb-2">Distribusi Operasional - {selectedMonth}</h4>
+        {/* Right Column: Category breakdown */}
+        <div className="lg:col-span-4 bg-white rounded-[28px] p-6 space-y-6 shadow-sm self-start">
+          <h4 className="text-sm font-bold text-[#171A18] tracking-tight">Distribusi Operasional</h4>
           
-          <div className="space-y-2.5">
+          <div className="space-y-4">
             {ALL_CATEGORIES.map((cat) => {
               const categoryTotal = categorySpendingSums[cat] || 0;
               const ratio = totalThisMonth > 0 ? (categoryTotal / totalThisMonth) * 100 : 0;
               const theme = getCategoryTheme(cat);
+              if (categoryTotal === 0) return null;
+
               return (
-                <div key={cat} className="space-y-1 text-[11px] font-semibold text-slate-700">
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="flex items-center gap-1.5 text-xs">
+                <div key={cat} className="space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="flex items-center gap-2 font-bold text-[#171A18]">
                       <span>{theme.val}</span>
                       <span>{cat}</span>
                     </span>
-                    <span className="font-mono text-xs">{formatIDR(categoryTotal)} ({ratio.toFixed(0)}%)</span>
+                    <span className="font-extrabold text-[#171A18]">{formatIDR(categoryTotal)}</span>
                   </div>
                   {/* CSS Bar ratios */}
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-[#F5F1E8] h-2 rounded-full overflow-hidden">
                     <div 
                       style={{ width: `${ratio}%` }} 
-                      className={`h-full rounded-full ${
-                        cat === 'Listrik' ? 'bg-amber-400' : cat === 'Air' ? 'bg-indigo-400' : 'bg-teal-500'
+                      className={`h-full rounded-full transition-all duration-1000 ${
+                        cat === 'Listrik' ? 'bg-amber-400' : cat === 'Air' ? 'bg-indigo-400' : 'bg-[#173B30]'
                       }`}
                     ></div>
                   </div>
@@ -297,8 +294,8 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
             })}
           </div>
 
-          <div className="pt-2 border-t border-slate-100 p-2 text-[10px] text-slate-400 italic">
-            * Kategori Listrik & AC mendominasi 72% dari total pengeluran kost di Indonesia secara global (Survey Kostos 2026).
+          <div className="pt-2 text-[10px] text-[#6E746F] italic">
+            * Kategori Listrik & AC mendominasi 72% dari total pengeluran kost di Indonesia.
           </div>
         </div>
 
@@ -306,23 +303,23 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
 
       {/* 3. ADD OPERATIONAL TRANSACTION DIALOG FORM MODAL */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md border border-slate-300 shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 bg-[#173B30]/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md border border-[rgba(23,59,48,0.20)] shadow-2xl overflow-hidden">
             
-            <div className="p-5 bg-slate-950 text-white flex justify-between items-center">
+            <div className="p-5 bg-[#171A18] text-white flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <TrendingDown className="h-5 w-5 text-rose-400" />
+                <TrendDown className="h-5 w-5 text-rose-400" />
                 <span className="font-extrabold text-base">Catat Pengeluaran Baru</span>
               </div>
               <button 
                 onClick={() => setShowAddForm(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                className="p-1 rounded-full text-[#6E746F] hover:text-white hover:bg-[#0f2720] cursor-pointer"
               >
-                <X className="h-5 w-5" />
+                <X weight="duotone" className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="p-6 space-y-4 text-xs text-slate-800">
+            <form onSubmit={handleAddSubmit} className="p-6 space-y-4 text-xs text-[#171A18]">
               {formError && (
                 <div className="p-3 text-xs bg-rose-50 text-rose-600 border border-rose-100 rounded-xl font-medium">
                   ⚠️ {formError}
@@ -330,7 +327,7 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
               )}
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block">KATEGORI TRANSAKSI *</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block">KATEGORI TRANSAKSI *</label>
                 <div className="grid grid-cols-4 gap-1.5 font-bold">
                   {ALL_CATEGORIES.map((cat) => {
                     const isSelected = expCategory === cat;
@@ -341,7 +338,7 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
                         key={cat}
                         onClick={() => setExpCategory(cat)}
                         className={`p-2 border rounded-xl flex flex-col justify-center items-center gap-1 cursor-pointer text-[10px] ${
-                          isSelected ? 'border-2 border-rose-500 bg-rose-50 text-rose-900' : 'border-slate-200 text-slate-500 bg-white hover:bg-slate-50'
+                          isSelected ? 'border-2 border-rose-500 bg-rose-50 text-rose-900' : 'border-[rgba(23,59,48,0.15)] text-[#6E746F] bg-white hover:bg-white'
                         }`}
                       >
                         <span className="text-base">{ui.val}</span>
@@ -353,26 +350,26 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block">DESKRIPSI OPERASIONAL *</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block">DESKRIPSI OPERASIONAL *</label>
                 <input
                   type="text"
                   required
                   placeholder="Contoh: Beli AC baru Kamar A04, Iuran sampah rukun warga..."
-                  className="w-full bg-slate-50 text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none"
+                  className="w-full bg-white text-xs p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl focus:outline-none"
                   value={expDesc}
                   onChange={(e) => setExpDesc(e.target.value)}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block">NILAI PENGELUARAN (IDR) *</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block">NILAI PENGELUARAN (IDR) *</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-bold">Rp</span>
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#6E746F] font-bold">Rp</span>
                   <input
                     type="number"
                     required
                     title="Jumlah Pengeluaran"
-                    className="w-full bg-slate-50 pl-10 pr-3 py-2.5 font-extrabold text-slate-800 border border-slate-200 rounded-xl focus:outline-none"
+                    className="w-full bg-white pl-10 pr-3 py-2.5 font-extrabold text-[#171A18] border border-[rgba(23,59,48,0.15)] rounded-xl focus:outline-none"
                     value={expAmount}
                     onChange={(e) => setExpAmount(Number(e.target.value))}
                   />
@@ -380,20 +377,20 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block">TANGGAL TRANSAKSI</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block">TANGGAL TRANSAKSI</label>
                 <input
                   type="date"
                   required
-                  className="w-full bg-slate-50 text-xs p-2.5 border border-slate-200 rounded-xl text-slate-800"
+                  className="w-full bg-white text-xs p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl text-[#171A18]"
                   value={expDate}
                   onChange={(e) => setExpDate(e.target.value)}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block">CATATAN KHUSUS (OPSIONAL)</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block">CATATAN KHUSUS (OPSIONAL)</label>
                 <textarea
-                  className="w-full bg-slate-50 text-xs p-2.5 border border-slate-200 rounded-xl text-slate-800"
+                  className="w-full bg-white text-xs p-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl text-[#171A18]"
                   rows={2}
                   placeholder="Beli di Toko Sinar Terang Dago, garansi AC 1 tahun..."
                   value={expNotes}
@@ -401,11 +398,11 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex justify-end gap-2">
+              <div className="pt-4 border-t border-[rgba(23,59,48,0.06)] flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 bg-slate-50 text-slate-500 rounded-xl font-bold cursor-pointer hover:bg-slate-100"
+                  className="px-4 py-2 bg-white text-[#6E746F] rounded-xl font-bold cursor-pointer hover:bg-[#FBF9F5]"
                 >
                   Batal
                 </button>

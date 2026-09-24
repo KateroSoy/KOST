@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Bill;
 use App\Models\Setting;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class BillAndSettingModelTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_bill_can_be_created_found_and_deleted(): void
     {
         $id = 'smoke-bill-'.time();

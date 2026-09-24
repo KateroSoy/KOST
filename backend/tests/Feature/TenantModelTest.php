@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class TenantModelTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_tenant_can_be_created_found_and_deleted(): void
     {
         $id = 'smoke-tenant-'.time();

@@ -4,12 +4,16 @@ namespace Tests\Feature;
 
 use App\Models\Complaint;
 use App\Models\Expense;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ComplaintApiTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_complaint_crud_and_patch_does_not_auto_create_expense(): void
     {
+        $this->actingAsOwner();
         $id = 'smoke-comp-'.time();
 
         $this->postJson('/api/complaints', [

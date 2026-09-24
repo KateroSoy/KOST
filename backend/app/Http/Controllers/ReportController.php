@@ -23,6 +23,19 @@ class ReportController extends Controller
         return "{$year}-{$monthNum}";
     }
 
+    private function monthLabelFromDate(string $date): ?string
+    {
+        $parts = explode('-', $date);
+        if (count($parts) < 2 || !is_numeric($parts[0]) || !is_numeric($parts[1])) {
+            return null;
+        }
+        $monthIndex = ((int) $parts[1]) - 1;
+        if ($monthIndex < 0 || $monthIndex > 11) {
+            return null;
+        }
+        return self::MONTHS[$monthIndex] . ' ' . $parts[0];
+    }
+
     private function trendMonths(string $selectedMonth): array
     {
         $parts = explode(' ', $selectedMonth);
@@ -62,10 +75,12 @@ class ReportController extends Controller
                 return $date >= $startDate && $date <= $endDate;
             });
             $activeExpenses = $allExpenses->filter(fn ($e) => $e->date >= $startDate && $e->date <= $endDate);
+            $trendAnchorMonth = $this->monthLabelFromDate($endDate) ?? $selectedMonth;
         } else {
             $activeBills = $allBills->where('period', $selectedMonth);
             $activeMonthKey = $this->monthKey($selectedMonth);
             $activeExpenses = $allExpenses->filter(fn ($e) => str_starts_with($e->date, $activeMonthKey));
+            $trendAnchorMonth = $selectedMonth;
         }
 
         $totalRevenue = (float) $activeBills->whereIn('status', ['Lunas', 'Sebagian'])->sum('paidAmount');
@@ -79,7 +94,7 @@ class ReportController extends Controller
             ? ($rooms->whereIn('status', ['Terisi', 'Menunggak'])->count() / $rooms->count()) * 100
             : 0;
 
-        $trend = collect($this->trendMonths($selectedMonth))->map(function ($m) use ($allBills, $allExpenses) {
+        $trend = collect($this->trendMonths($trendAnchorMonth))->map(function ($m) use ($allBills, $allExpenses) {
             $mKey = $this->monthKey($m);
             $mBills = $allBills->where('period', $m);
             $mExpenses = $allExpenses->filter(fn ($e) => str_starts_with($e->date, $mKey));

@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Complaint;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ComplaintModelTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_complaint_can_be_created_found_and_deleted(): void
     {
         $id = 'smoke-comp-'.time();

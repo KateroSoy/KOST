@@ -30,7 +30,25 @@ class BookingController extends Controller {
         }));
     }
     public function store(Request $request) {
-        $data = $request->all();
+        $data = $request->validate([
+            'id' => 'required|string',
+            'propertyId' => 'sometimes|string',
+            'roomId' => 'nullable|string',
+            'roomType' => 'required|string',
+            'roomNumber' => 'nullable|string',
+            'guestName' => 'required|string',
+            'guestPhone' => 'required|string',
+            'guestEmail' => 'nullable|string',
+            'moveInDate' => 'required|string',
+            'moveOutDate' => 'nullable|string',
+            'durationMonths' => 'required|numeric',
+            'guestsCount' => 'required|numeric',
+            'totalAmount' => 'required|numeric',
+            'depositAmount' => 'required|numeric',
+            'source' => 'required|string',
+            'status' => 'required|string',
+            'notes' => 'nullable|string',
+        ]);
         Booking::updateOrCreate(
             ['user_id' => $request->user()->id, 'custom_id' => $data['id']],
             [

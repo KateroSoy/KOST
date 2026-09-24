@@ -8,13 +8,17 @@ use App\Models\Expense;
 use App\Models\Room;
 use App\Models\Setting;
 use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class StayFlowApiTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->actingAsOwner();
     }
 
     /**

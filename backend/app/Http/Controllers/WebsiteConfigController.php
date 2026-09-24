@@ -26,7 +26,22 @@ class WebsiteConfigController extends Controller {
         }));
     }
     public function store(Request $request) {
-        $data = $request->all();
+        $data = $request->validate([
+            'propertyId' => 'required|string',
+            'templateId' => 'required|string',
+            'subdomain' => 'required|string',
+            'customDomain' => 'nullable|string',
+            'headline' => 'required|string',
+            'subheadline' => 'required|string',
+            'aboutText' => 'required|string',
+            'accentColor' => 'required|string',
+            'showAvailabilityWidget' => 'sometimes|boolean',
+            'showReviews' => 'sometimes|boolean',
+            'showFaq' => 'sometimes|boolean',
+            'whatsappDirect' => 'required|string',
+            'sections' => 'sometimes|array',
+            'isPublished' => 'sometimes|boolean',
+        ]);
         WebsiteConfig::updateOrCreate(
             ['user_id' => $request->user()->id, 'property_id' => $data['propertyId']],
             [

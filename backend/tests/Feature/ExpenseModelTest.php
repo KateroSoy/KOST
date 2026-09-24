@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Expense;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExpenseModelTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_expense_can_be_created_found_and_deleted(): void
     {
         $id = 'smoke-exp-'.time();

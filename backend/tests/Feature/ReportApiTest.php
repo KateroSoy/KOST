@@ -89,4 +89,17 @@ class ReportApiTest extends TestCase
             ->assertJsonPath('totalRevenue', 1400000.0)
             ->assertJsonPath('totalCosts', 300000.0);
     }
+
+    public function test_range_mode_trend_reflects_the_selected_range_not_the_hardcoded_default_month()
+    {
+        // Regression: the trend chart used to always default to "Juni 2026"
+        // in range mode because the frontend never sends a `month` param.
+        $response = $this->actingAs($this->pro, 'sanctum')
+            ->getJson('/api/reports?mode=range&startDate=2026-01-01&endDate=2026-03-31');
+
+        $response->assertStatus(200);
+
+        $trendNames = collect($response->json('trend'))->pluck('name')->all();
+        $this->assertSame(['Februari', 'Maret', 'April'], $trendNames);
+    }
 }

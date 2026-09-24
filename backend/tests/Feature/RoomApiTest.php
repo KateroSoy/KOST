@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Models\Room;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RoomApiTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_room_crud_endpoints(): void
     {
+        $this->actingAsOwner();
         $id = 'smoke-room-'.time();
 
         $this->postJson('/api/rooms', [

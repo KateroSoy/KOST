@@ -5,12 +5,16 @@ namespace Tests\Feature;
 use App\Models\Bill;
 use App\Models\Room;
 use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class TenantMoveOutApiTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_move_out_drops_unpaid_bills_frees_room_and_deletes_tenant(): void
     {
+        $user = $this->actingAsOwner();
         $ts = time();
         $roomId = "smoke-room-{$ts}";
         $tenantId = "smoke-tenant-{$ts}";
@@ -18,19 +22,20 @@ class TenantMoveOutApiTest extends TestCase
         $unpaidBillId = "smoke-bill-unpaid-{$ts}";
 
         Room::create([
-            'id' => $roomId, 'number' => "Z{$ts}", 'status' => 'Terisi',
+            'id' => $roomId, 'user_id' => $user->id, 'number' => "Z{$ts}", 'status' => 'Terisi',
             'type' => 'Standard', 'price' => 500000, 'floor' => 9, 'size' => '3x3 m',
             'facilities' => [], 'tenantId' => $tenantId,
         ]);
 
         Tenant::create([
-            'id' => $tenantId, 'name' => 'Smoke Tester', 'phone' => '08123',
+            'id' => $tenantId, 'user_id' => $user->id, 'name' => 'Smoke Tester', 'phone' => '08123',
             'email' => 's@t.id', 'emergencyContact' => ['name' => 'X', 'relation' => 'Y', 'phone' => '0'],
             'idNumber' => '1', 'roomAssigned' => $roomId, 'moveInDate' => '2026-07-07',
             'rentAmount' => 500000, 'deposit' => 0, 'status' => 'Lunas',
         ]);
 
         $billAttrs = [
+            'user_id' => $user->id,
             'tenantId' => $tenantId, 'tenantName' => 'Smoke Tester', 'roomId' => $roomId,
             'roomNumber' => "Z{$ts}", 'period' => 'Juli 2026', 'dueDate' => '2026-07-05',
             'rentAmount' => 500000, 'electricityCharge' => 0, 'waterCharge' => 0,
@@ -63,11 +68,12 @@ class TenantMoveOutApiTest extends TestCase
 
     public function test_destroy_deletes_tenant_without_side_effects(): void
     {
+        $user = $this->actingAsOwner();
         $ts = time();
         $tenantId = "smoke-tenant-destroy-{$ts}";
 
         Tenant::create([
-            'id' => $tenantId, 'name' => 'Smoke Tester', 'phone' => '08123',
+            'id' => $tenantId, 'user_id' => $user->id, 'name' => 'Smoke Tester', 'phone' => '08123',
             'email' => 's@t.id', 'emergencyContact' => ['name' => 'X', 'relation' => 'Y', 'phone' => '0'],
             'idNumber' => '1', 'roomAssigned' => 'none', 'moveInDate' => '2026-07-07',
             'rentAmount' => 0, 'deposit' => 0, 'status' => 'Lunas',

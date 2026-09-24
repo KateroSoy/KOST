@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Search, Plus, Filter, Tag, Check, CheckCircle2, AlertTriangle, Users, Hammer, ListCollapse, X, Trash2, Edit3, ArrowUpRight, Sparkles, RefreshCw, Eye, Wind, Wifi, Tv } from 'lucide-react';
+import { MagnifyingGlass, Plus, Faders, Tag, Check, CheckCircle, Warning, Users, Hammer, List, X, Trash, PencilSimple, Buildings, Eye } from '@phosphor-icons/react';
 import { Room, Tenant, Bill, RoomStatus, RoomType, HousekeepingStatus } from '../types';
+import { ElegantSelect } from './ElegantSelect';
+import { generateId } from '../utils';
 
 interface RoomsViewProps {
   rooms: Room[];
@@ -20,27 +22,28 @@ export function RoomsView({
   onAddRoom, onUpdateRoomStatus, onDeleteRoom, onNavigateToTab, onUpdateHousekeepingStatus 
 }: RoomsViewProps) {
   
-  // Views states
+  // View states
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Semua');
-  const [housekeepingFilter, setHousekeepingFilter] = useState<string>('Semua');
+  const [floorFilter, setFloorFilter] = useState<string>('Semua');
+  
+  // Custom dropdown state
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   // Add Room form states
   const [roomNo, setRoomNo] = useState('');
-  const [roomType, setRoomType] = useState<RoomType>('Standard');
+  const [roomType, setRoomType] = useState<RoomType>('Studio');
   const [roomFloor, setRoomFloor] = useState(1);
-  const [pricePerDay, setPricePerDay] = useState(180000);
-  const [pricePerMonth, setPricePerMonth] = useState(1500000);
-  const [roomSize, setRoomSize] = useState('3x3 m');
+  const [pricePerMonth, setPricePerMonth] = useState(3500000);
+  const [roomSize, setRoomSize] = useState('4x4 m');
   const [roomNotes, setRoomNotes] = useState('');
-  const [selectedFacilities, setSelectedFacilities] = useState<string[]>(['AC', 'WiFi', 'Kamar Mandi Dalam', 'Kasur Queen']);
+  const [selectedFacilities, setSelectedFacilities] = useState<string[]>(['AC', 'WiFi', 'Private Bathroom', 'Queen Bed']);
   const [formError, setFormError] = useState('');
 
-  // Predefined facilities lists
   const AVAILABLE_FACILITIES = [
-    'AC', 'WiFi', 'Kamar Mandi Dalam', 'Kamar Mandi Luar', 'Kasur Single', 'Kasur Queen', 
-    'Lemari Baju', 'Water Heater', 'Smart TV 32"', 'Meja Kerja', 'Kulkas Mini', 'Balkon'
+    'Private Bathroom', 'AC', 'Workspace', 'Queen Bed', 'King Bed', 
+    'WiFi Fiber', 'Lemari Built-in', 'Smart TV', 'Balkon', 'Water Heater'
   ];
 
   const handleFacilityToggle = (facility: string) => {
@@ -54,412 +57,410 @@ export function RoomsView({
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomNo) {
-      setFormError('Nomor kamar wajib diisi!');
-      return;
-    }
-    // Check if room number already exists
-    if (rooms.some(r => r.number.toLowerCase() === roomNo.trim().toLowerCase())) {
-      setFormError('Nomor kamar ini sudah terdaftar!');
+      setFormError('Nomor atau nama kamar wajib diisi!');
       return;
     }
 
     const newRoom: Room = {
-      id: `room-${Date.now()}`,
-      number: roomNo.toUpperCase(),
+      id: generateId('room'),
+      number: roomNo,
       status: 'Kosong',
       type: roomType,
       price: pricePerMonth,
-      pricePerDay: pricePerDay,
       pricePerMonth: pricePerMonth,
       housekeepingStatus: 'Bersih',
-      rentalTypesAllowed: ['Harian', 'Bulanan'],
       floor: Number(roomFloor),
       size: roomSize,
       facilities: selectedFacilities,
       notes: roomNotes,
-      images: ['https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format&fit=crop&q=80']
+      images: ['https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&auto=format&fit=crop&q=80']
     };
 
     onAddRoom(newRoom);
     
-    // Reset states
+    // Reset
     setRoomNo('');
-    setRoomType('Standard');
-    setRoomFloor(1);
-    setPricePerDay(180000);
-    setPricePerMonth(1500000);
-    setRoomSize('3x3 m');
-    setRoomNotes('');
     setFormError('');
     setShowAddForm(false);
   };
 
-  // Helper formatting currency
   const formatIDR = (num: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(num);
+    return `Rp ${num.toLocaleString('id-ID')}`;
   };
 
-  // Filter and search logic
   const filteredRooms = rooms.filter(room => {
     const matchesSearch = room.number.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           room.type.toLowerCase().includes(searchQuery.toLowerCase());
-    
     const matchesStatus = statusFilter === 'Semua' || room.status === statusFilter;
-    const matchesHK = housekeepingFilter === 'Semua' || room.housekeepingStatus === housekeepingFilter;
+    const matchesFloor = floorFilter === 'Semua' || room.floor.toString() === floorFilter;
 
-    return matchesSearch && matchesStatus && matchesHK;
+    return matchesSearch && matchesStatus && matchesFloor;
   });
 
-  // Selected Room Details
   const activeDetailRoom = rooms.find(r => r.id === selectedRoomId);
   const roomTenant = activeDetailRoom && activeDetailRoom.tenantId 
     ? tenants.find(t => t.id === activeDetailRoom.tenantId) 
     : null;
 
-  const roomPaymentHistory = activeDetailRoom 
-    ? bills.filter(b => b.roomId === activeDetailRoom.id && b.status === 'Lunas') 
-    : [];
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       
-      {/* 1. SEARCH BAR & FILTERS */}
-      <section className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
-        
-        {/* Search Input */}
-        <div className="relative flex-1">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-            <Search className="h-4 w-4" />
-          </span>
+      {/* 1. TOP HEADER & FILTER BAR */}
+      <div className="flex items-center justify-between mb-6 gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-[#171A18] font-editorial tracking-tight leading-none">
+            Kamar
+          </h2>
+          <p className="text-xs text-[#6E746F] mt-1.5 leading-none">
+            Kelola unit dan ketersediaan
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="px-5 py-3 rounded-full bg-[#173B30] text-[#F5F1E8] hover:bg-[#0f2720] text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#173b30]/20"
+        >
+           Kamar Baru
+        </button>
+      </div>
+
+      {/* Filter Row (App-less look) */}
+      <div className="flex flex-col gap-3">
+        <div className="relative w-full">
+          <MagnifyingGlass weight="duotone" className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#6E746F]" />
           <input
             type="text"
-            placeholder="Cari nomor kamar atau tipe (Standard, Deluxe, VIP...)"
-            className="w-full bg-slate-50 text-xs pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white text-slate-800 transition-all font-medium"
+            placeholder="Cari nomor kamar..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-3.5 bg-white rounded-2xl text-sm text-[#171A18] placeholder-[#6E746F] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#173B30] transition-all"
           />
         </div>
 
-        {/* Filter status */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            {['Semua', 'Kosong', 'Terisi', 'Booking', 'Perbaikan'].map((status) => {
-              const isActive = statusFilter === status;
-              return (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-xl text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                    isActive 
-                      ? 'bg-teal-600 text-white shadow-xs' 
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {status} ({status === 'Semua' ? rooms.length : rooms.filter(r => r.status === status).length})
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="h-4 w-px bg-slate-200 hidden md:block"></div>
-
-          {/* Housekeeping filter */}
-          <select
-            value={housekeepingFilter}
-            onChange={(e) => setHousekeepingFilter(e.target.value)}
-            className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2.5 py-1.5 rounded-xl border border-slate-200 focus:outline-none cursor-pointer"
-          >
-            <option value="Semua">Housekeeping: Semua</option>
-            <option value="Bersih">✨ Bersih Steril</option>
-            <option value="Kotor">⚠️ Kotor Perlu Dibersihkan</option>
-            <option value="Dibersihkan">🧹 Pembersihan</option>
-          </select>
-
-          {/* Add Button */}
-          <button
-            onClick={() => {
-              setShowAddForm(true);
-              onSelectRoomId(null);
-            }}
-            className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-teal-600/15 cursor-pointer"
-          >
-            <Plus className="h-4 w-4" /> Tambah Kamar Baru
-          </button>
-        </div>
-      </section>
-
-      {/* 2. ROOM DETAIL & HOUSEKEEPING MODAL OVERLAY */}
-      {activeDetailRoom && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            
-            {/* Header */}
-            <div className="p-5 bg-gradient-to-r from-teal-900 to-slate-900 text-white flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="h-8 w-8 rounded-xl bg-teal-500 flex items-center justify-center font-black text-sm text-slate-950">
-                  {activeDetailRoom.number}
-                </span>
-                <div>
-                  <span className="font-extrabold text-base block">Kamar {activeDetailRoom.number} ({activeDetailRoom.type})</span>
-                  <span className="text-[10px] text-teal-300">Lantai {activeDetailRoom.floor} • Dimensi {activeDetailRoom.size}</span>
-                </div>
-              </div>
-              <button 
-                onClick={() => onSelectRoomId(null)}
-                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer"
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar">
+          {['Semua', 'Kosong', 'Terisi', 'Booking', 'Perbaikan'].map((status) => {
+            const count = status === 'Semua' ? rooms.length : rooms.filter(r => r.status === status).length;
+            return (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all cursor-pointer shadow-sm ${
+                  statusFilter === status
+                    ? 'bg-[#173B30] text-white shadow-md shadow-[#173b30]/20'
+                    : 'bg-white text-[#6E746F] hover:text-[#171A18]'
+                }`}
               >
-                <X className="h-5 w-5" />
+                {status} <span className="opacity-60 ml-1">({count})</span>
               </button>
-            </div>
+            );
+          })}
+        </div>
+      </div>
 
-            {/* Scroll Content */}
-            <div className="p-6 space-y-6 overflow-y-auto flex-1">
-              
-              {/* Housekeeping Control Bar */}
-              <div className="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between gap-4">
-                <div>
-                  <span className="text-[10px] font-bold text-teal-400 uppercase tracking-widest block">Status Kebersihan Kamar</span>
-                  <p className="text-sm font-bold flex items-center gap-2 mt-0.5">
-                    {activeDetailRoom.housekeepingStatus === 'Bersih' && <span className="text-emerald-400">✨ Bersih Steril (Siap Check-In)</span>}
-                    {activeDetailRoom.housekeepingStatus === 'Kotor' && <span className="text-amber-400">⚠️ Kotor (Perlu Dibersihkan Housekeeping)</span>}
-                    {activeDetailRoom.housekeepingStatus === 'Dibersihkan' && <span className="text-cyan-400">🧹 Sedang Dalam Proses Pembersihan</span>}
-                  </p>
-                </div>
+      {/* 2. ROOMS GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pb-10">
+        {filteredRooms.map((room) => {
+          const isAvailable = room.status === 'Kosong';
+          const isBooking = room.status === 'Booking';
+          const isOccupied = room.status === 'Terisi';
+          const isMaintenance = room.status === 'Perbaikan' || room.status === 'Dibersihkan';
 
-                <div className="flex items-center gap-2">
-                  {activeDetailRoom.housekeepingStatus !== 'Bersih' && (
-                    <button
-                      onClick={() => {
-                        if (onUpdateHousekeepingStatus) onUpdateHousekeepingStatus(activeDetailRoom.id, 'Bersih');
-                      }}
-                      className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md cursor-pointer"
-                    >
-                      ✓ Tandai Bersih
-                    </button>
-                  )}
-                  {activeDetailRoom.housekeepingStatus !== 'Kotor' && (
-                    <button
-                      onClick={() => {
-                        if (onUpdateHousekeepingStatus) onUpdateHousekeepingStatus(activeDetailRoom.id, 'Kotor');
-                      }}
-                      className="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 font-bold text-xs rounded-xl border border-amber-500/40 cursor-pointer"
-                    >
-                      ⚠️ Tandai Kotor
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Dual Rate Breakdown */}
-              <div className="grid grid-cols-2 gap-4 bg-teal-50/70 p-4 rounded-2xl border border-teal-100">
-                <div>
-                  <span className="text-[10px] text-teal-800 uppercase font-bold block">Tarif Sewa Harian</span>
-                  <span className="text-xl font-black text-teal-900">
-                    {formatIDR(activeDetailRoom.pricePerDay || 180000)}
-                  </span>
-                  <span className="text-[10px] text-teal-700"> /malam</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-teal-800 uppercase font-bold block">Tarif Sewa Bulanan</span>
-                  <span className="text-xl font-black text-emerald-900">
-                    {formatIDR(activeDetailRoom.pricePerMonth || activeDetailRoom.price)}
-                  </span>
-                  <span className="text-[10px] text-teal-700"> /bulan</span>
-                </div>
-              </div>
-
-              {/* Facilities list */}
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Fasilitas Kamar</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {(activeDetailRoom.facilities || []).map((fac, idx) => (
-                    <span key={idx} className="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1 rounded-xl">
-                      ✓ {fac}
+          return (
+            <div
+              key={room.id}
+              className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              {/* Room Image & Badges */}
+              <div className="relative aspect-[16/10] bg-zinc-100 overflow-hidden m-2 rounded-[24px]">
+                <img
+                  src={room.images?.[0] || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format&fit=crop&q=80'}
+                  alt={room.number}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-3 left-3">
+                  {isAvailable && (
+                    <span className="bg-white/90 backdrop-blur-sm text-emerald-800 text-[10px] font-extrabold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Tersedia
                     </span>
-                  ))}
+                  )}
+                  {isBooking && (
+                    <span className="bg-white/90 backdrop-blur-sm text-amber-800 text-[10px] font-extrabold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Booking
+                    </span>
+                  )}
+                  {isOccupied && (
+                    <span className="bg-white/90 backdrop-blur-sm text-zinc-800 text-[10px] font-extrabold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-600"></div> Terisi
+                    </span>
+                  )}
+                  {isMaintenance && (
+                    <span className="bg-white/90 backdrop-blur-sm text-rose-800 text-[10px] font-extrabold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div> Perbaikan
+                    </span>
+                  )}
+                </div>
+
+                <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full">
+                  Lantai {room.floor}
                 </div>
               </div>
 
-              {/* Occupant Info */}
-              {roomTenant ? (
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Penghuni / Guest Aktif</h4>
-                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
-                      Tipe: {roomTenant.guestType || 'Bulanan'}
+              {/* Room Body */}
+              <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start">
+                    <div>
+                       <h4 className="text-lg font-bold text-[#171A18] leading-tight">
+                         Kamar {room.number}
+                       </h4>
+                       <span className="text-xs font-semibold text-[#6E746F] mt-1 block">
+                         {room.type} • {room.size}
+                       </span>
+                    </div>
+                    <button
+                      onClick={() => onSelectRoomId(room.id)}
+                      className="h-10 w-10 rounded-full bg-[#F5F1E8] flex items-center justify-center text-[#173B30] shadow-sm hover:bg-[#E5DCC5] transition-colors"
+                    >
+                      <Eye weight="duotone" className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] text-[#6E746F] font-medium uppercase tracking-wider block">Sewa / Bulan</span>
+                    <span className="text-base font-extrabold text-[#173B30] mt-0.5 block">
+                      {formatIDR(room.pricePerMonth || room.price)}
                     </span>
                   </div>
-                  <p className="text-sm font-black text-slate-800">{roomTenant.name}</p>
-                  <p className="text-xs text-slate-500">HP/WA: {roomTenant.phone} • Check-In: {roomTenant.checkInDate || roomTenant.moveInDate}</p>
+
+                  <div className="relative">
+                     <button
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         setOpenDropdownId(openDropdownId === room.id ? null : room.id);
+                       }}
+                       className="text-xs font-bold rounded-xl bg-[#FBF9F5] px-3 py-2 text-[#171A18] cursor-pointer outline-none shadow-sm flex items-center gap-2 hover:bg-[#F5F1E8] transition-colors"
+                     >
+                       {room.status === 'Kosong' ? 'Tersedia' : room.status}
+                       <svg width="8" height="8" viewBox="0 0 292.4 292.4" fill="#171A18"><path d="M287 69.4a17.6 17.6 0 0 0-13-5.4H18.4c-5 0-9.3 1.8-12.9 5.4A17.6 17.6 0 0 0 0 82.2c0 5 1.8 9.3 5.4 12.9l128 127.9c3.6 3.6 7.8 5.4 12.8 5.4s9.2-1.8 12.8-5.4L287 95c3.5-3.5 5.4-7.8 5.4-12.8 0-5-1.9-9.2-5.5-12.8z"/></svg>
+                     </button>
+                     
+                     {openDropdownId === room.id && (
+                       <>
+                         <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenDropdownId(null); }}></div>
+                         <div className="absolute right-0 bottom-full mb-2 w-36 bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                           {(['Kosong', 'Terisi', 'Booking', 'Perbaikan', 'Dibersihkan'] as RoomStatus[]).map((status) => (
+                             <button
+                               key={status}
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 onUpdateRoomStatus(room.id, status);
+                                 setOpenDropdownId(null);
+                               }}
+                               className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer ${
+                                 room.status === status 
+                                   ? 'bg-[#173B30] text-white' 
+                                   : 'text-[#171A18] hover:bg-[#F5F1E8]'
+                               }`}
+                             >
+                               {status === 'Kosong' ? 'Tersedia' : status}
+                             </button>
+                           ))}
+                         </div>
+                       </>
+                     )}
+                  </div>
                 </div>
-              ) : (
-                <div className="p-6 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
-                  <p className="text-xs font-bold text-slate-700">Kamar Sedang Kosong (Ready Check-In)</p>
-                </div>
-              )}
-
-            </div>
-
-            {/* Modal Controls */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm(`Hapus kamar ${activeDetailRoom.number}?`)) {
-                    onDeleteRoom(activeDetailRoom.id);
-                    onSelectRoomId(null);
-                  }
-                }}
-                className="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-              >
-                <Trash2 className="h-4 w-4" /> Hapus Kamar
-              </button>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => onSelectRoomId(null)}
-                  className="px-4 py-2 bg-slate-200 text-slate-800 font-bold text-xs rounded-xl cursor-pointer"
-                >
-                  Tutup
-                </button>
               </div>
             </div>
+          );
+        })}
+      </div>
 
+      {/* 3. ROOM DETAIL MODAL */}
+      {activeDetailRoom && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-[#FBF9F5] sm:rounded-3xl rounded-t-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 slide-up-animation">
+            <div className="flex items-center justify-between border-b border-[#E5DCC5] pb-4">
+              <div>
+                <span className="text-[10px] font-bold text-[#A8B7A1] uppercase tracking-wider">Detail Kamar</span>
+                <h3 className="text-xl font-bold text-[#171A18] mt-1">{activeDetailRoom.number}</h3>
+              </div>
+              <button
+                onClick={() => onSelectRoomId(null)}
+                className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-[#6E746F] shadow-sm"
+              >
+                <X weight="duotone" className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-[#6E746F]">Tipe</span>
+                <span className="font-bold bg-white px-3 py-1 rounded-lg shadow-sm">{activeDetailRoom.type}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[#6E746F]">Lantai / Ukuran</span>
+                <span className="font-bold">Lantai {activeDetailRoom.floor} • {activeDetailRoom.size}</span>
+              </div>
+              <div className="flex justify-between items-center p-4 bg-white rounded-2xl shadow-sm my-2">
+                <span className="text-[#6E746F] font-medium">Tarif Bulanan</span>
+                <span className="font-extrabold text-[#173B30] text-lg">{formatIDR(activeDetailRoom.pricePerMonth || activeDetailRoom.price)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[#6E746F]">Status Saat Ini</span>
+                <span className="font-bold">{activeDetailRoom.status}</span>
+              </div>
+              
+              {roomTenant && (
+                <div className="p-4 bg-white rounded-2xl shadow-sm mt-4">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block mb-2">Penghuni Aktif</span>
+                  <p className="font-bold text-base text-[#171A18]">{roomTenant.name}</p>
+                  <div className="mt-2 space-y-1">
+                     <p className="text-[#6E746F] text-xs flex items-center justify-between">
+                        <span>Masuk:</span> <span className="font-semibold text-[#171A18]">{roomTenant.moveInDate}</span>
+                     </p>
+                     <p className="text-[#6E746F] text-xs flex items-center justify-between">
+                        <span>Kontak:</span> <span className="font-semibold text-[#171A18]">{roomTenant.phone}</span>
+                     </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 flex flex-col gap-3">
+              <button
+                onClick={() => onSelectRoomId(null)}
+                className="w-full px-4 py-3.5 rounded-2xl bg-[#173B30] text-[#F5F1E8] text-sm font-bold shadow-md shadow-[#173b30]/20"
+              >
+                Tutup
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteRoom(activeDetailRoom.id);
+                  onSelectRoomId(null);
+                }}
+                className="w-full py-3.5 rounded-2xl bg-white text-xs text-rose-700 font-bold shadow-sm"
+              >
+                Hapus Kamar
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 3. ADD KAMAR FORM MODAL */}
+      {/* 4. ADD ROOM FORM MODAL */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg border border-slate-200 shadow-2xl overflow-hidden">
-            <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Plus className="h-5 w-5 text-teal-400" />
-                <span className="font-extrabold text-base">Tambah Kamar Dual-Tarif Baru</span>
-              </div>
-              <button 
-                onClick={() => setShowAddForm(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-white"
-              >
-                <X className="h-5 w-5" />
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#FBF9F5] border border-[rgba(23,59,48,0.15)] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[rgba(23,59,48,0.10)] pb-3">
+              <h3 className="text-lg font-bold text-[#171A18] font-editorial">Tambah Kamar Baru</h3>
+              <button onClick={() => setShowAddForm(false)} className="p-1 text-[#6E746F]">
+                <X weight="duotone" className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
-              {formError && (
-                <div className="p-3 bg-rose-50 text-rose-600 rounded-xl font-bold">
-                  ⚠️ {formError}
-                </div>
-              )}
+            {formError && (
+              <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{formError}</p>
+            )}
+
+            <form onSubmit={handleAddSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-[#171A18] mb-1">Nomor / Nama Kamar *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Studio Plus A104"
+                  value={roomNo}
+                  onChange={(e) => setRoomNo(e.target.value)}
+                  className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3.5 py-2 text-xs text-[#171A18]"
+                />
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nomor Kamar *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: A05"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-slate-900"
-                    value={roomNo}
-                    onChange={(e) => setRoomNo(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tipe Kamar</label>
-                  <select
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                  <label className="block font-bold text-[#171A18] mb-1">Tipe Kamar</label>
+                  <ElegantSelect
                     value={roomType}
-                    onChange={(e) => setRoomType(e.target.value as RoomType)}
-                  >
-                    <option value="Standard">Standard</option>
-                    <option value="Deluxe">Deluxe</option>
-                    <option value="Suite">Suite</option>
-                    <option value="VIP">VIP</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Dual rates */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tarif Harian (Rp/malam) *</label>
-                  <input
-                    type="number"
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
-                    value={pricePerDay}
-                    onChange={(e) => setPricePerDay(Number(e.target.value))}
+                    onChange={(val) => setRoomType(val as RoomType)}
+                    options={[
+                      { value: 'Studio', label: 'Studio' },
+                      { value: 'Studio Plus', label: 'Studio Plus' },
+                      { value: 'Suite', label: 'Suite' },
+                      { value: 'Standard', label: 'Standard' },
+                      { value: 'Deluxe', label: 'Deluxe' }
+                    ]}
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tarif Bulanan (Rp/bulan) *</label>
-                  <input
-                    type="number"
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
-                    value={pricePerMonth}
-                    onChange={(e) => setPricePerMonth(Number(e.target.value))}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Posisi Lantai</label>
+                  <label className="block font-bold text-[#171A18] mb-1">Lantai</label>
                   <input
                     type="number"
                     min={1}
-                    max={10}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
                     value={roomFloor}
                     onChange={(e) => setRoomFloor(Number(e.target.value))}
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3.5 py-2 text-xs text-[#171A18]"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Dimensi Ukuran</label>
+                  <label className="block font-bold text-[#171A18] mb-1">Tarif Bulanan (Rp) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={pricePerMonth}
+                    onChange={(e) => setPricePerMonth(Number(e.target.value))}
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3.5 py-2 text-xs text-[#171A18]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#171A18] mb-1">Ukuran Kamar</label>
                   <input
                     type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
                     value={roomSize}
                     onChange={(e) => setRoomSize(e.target.value)}
+                    placeholder="4x4 m"
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3.5 py-2 text-xs text-[#171A18]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Fasilitas Kamar</label>
-                <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                <label className="block font-bold text-[#171A18] mb-1.5">Fasilitas Kamar</label>
+                <div className="flex flex-wrap gap-1.5">
                   {AVAILABLE_FACILITIES.map(fac => (
-                    <label key={fac} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedFacilities.includes(fac)}
-                        onChange={() => handleFacilityToggle(fac)}
-                        className="rounded text-teal-600"
-                      />
-                      <span>{fac}</span>
-                    </label>
+                    <button
+                      key={fac}
+                      type="button"
+                      onClick={() => handleFacilityToggle(fac)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
+                        selectedFacilities.includes(fac)
+                          ? 'bg-[#173B30] text-[#F5F1E8]'
+                          : 'bg-white border text-[#6E746F]'
+                      }`}
+                    >
+                      {fac}
+                    </button>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+              <div className="pt-3 border-t border-[rgba(23,59,48,0.10)] flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                  className="px-4 py-2 rounded-xl border border-[rgba(23,59,48,0.20)] text-xs font-bold text-[#173B30]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-teal-600 text-white font-bold rounded-xl shadow-md"
+                  className="px-5 py-2 rounded-xl bg-[#173B30] text-[#F5F1E8] font-bold text-xs hover:bg-[#0f2720]"
                 >
                   Simpan Kamar
                 </button>
@@ -468,100 +469,6 @@ export function RoomsView({
           </div>
         </div>
       )}
-
-      {/* 4. ROOM CARDS GRID WITH HOUSEKEEPING ACTIONS */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredRooms.map((room) => {
-          const tenant = room.tenantId ? tenants.find(t => t.id === room.tenantId) : null;
-          const isClean = room.housekeepingStatus === 'Bersih';
-          const dailyRate = room.pricePerDay || 180000;
-          const monthlyRate = room.pricePerMonth || room.price;
-
-          return (
-            <div 
-              key={room.id}
-              className="bg-white rounded-3xl border border-slate-200 hover:border-teal-400 p-5 shadow-xs transition-all flex flex-col justify-between"
-            >
-              <div>
-                {/* Image & Status bar */}
-                <div className="relative h-36 bg-slate-100 rounded-2xl overflow-hidden mb-3">
-                  <img
-                    src={room.images?.[0] || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format&fit=crop&q=80'}
-                    alt={`Kamar ${room.number}`}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 left-2 flex items-center gap-1">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black text-white ${
-                      room.status === 'Kosong' ? 'bg-emerald-500' : 'bg-slate-900/80'
-                    }`}>
-                      {room.status}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                      isClean ? 'bg-teal-500 text-white' : 'bg-amber-500 text-white'
-                    }`}>
-                      {isClean ? '✨ Bersih' : '⚠️ Kotor'}
-                    </span>
-                  </div>
-
-                  <div className="absolute bottom-2 left-2 bg-white/95 px-2 py-0.5 rounded-lg text-xs font-black text-slate-900">
-                    Kmr {room.number}
-                  </div>
-                </div>
-
-                {/* Rates */}
-                <div className="flex items-baseline justify-between mb-2">
-                  <div>
-                    <span className="text-base font-black text-teal-700">Rp {dailyRate.toLocaleString('id-ID')}</span>
-                    <span className="text-[10px] text-slate-400 font-semibold">/mlm</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-slate-700">Rp {(monthlyRate/1000).toFixed(0)}rb</span>
-                    <span className="text-[10px] text-slate-400">/bln</span>
-                  </div>
-                </div>
-
-                {/* Facilities */}
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {(room.facilities || []).slice(0, 4).map((f, idx) => (
-                    <span key={idx} className="bg-slate-100 text-slate-600 text-[9px] font-bold px-2 py-0.5 rounded-md">
-                      {f}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Occupant preview */}
-                {tenant && (
-                  <div className="bg-slate-50 p-2 rounded-xl text-[10px] flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold">
-                      {tenant.name.charAt(0)}
-                    </div>
-                    <span className="font-bold text-slate-800 truncate">{tenant.name} ({tenant.guestType || 'Bulanan'})</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Actions Footer */}
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
-                {!isClean && onUpdateHousekeepingStatus && (
-                  <button
-                    onClick={() => onUpdateHousekeepingStatus(room.id, 'Bersih')}
-                    className="py-2 px-3 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[10px] rounded-xl flex items-center gap-1 cursor-pointer"
-                  >
-                    ✨ Set Bersih
-                  </button>
-                )}
-                <button
-                  onClick={() => onSelectRoomId(room.id)}
-                  className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] rounded-xl text-center cursor-pointer"
-                >
-                  Detail & Kelola
-                </button>
-              </div>
-
-            </div>
-          );
-        })}
-      </section>
 
     </div>
   );

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Search, Plus, Filter, Wrench, ShieldAlert, CheckSquare, Clock, User, X, AlertOctagon } from 'lucide-react';
+import { MagnifyingGlass, Plus, Faders, Wrench, ShieldWarning, CheckSquare, Clock, User, X, WarningOctagon } from '@phosphor-icons/react';
 import { Complaint, ComplaintCategory, ComplaintStatus, ComplaintPriority, Tenant, Room } from '../types';
+import { ElegantSelect } from './ElegantSelect';
+import { generateId } from '../utils';
 
 interface ComplaintsViewProps {
   complaints: Complaint[];
@@ -49,7 +51,7 @@ export function ComplaintsView({
     }
 
     const newComplaint: Complaint = {
-      id: `comp-${Date.now()}`,
+      id: generateId('comp'),
       tenantId: selectedTenant.id,
       tenantName: selectedTenant.name,
       roomId: `room-${selectedTenant.roomAssigned.toLowerCase()}`,
@@ -119,16 +121,16 @@ export function ComplaintsView({
     <div className="space-y-6 max-w-7xl mx-auto">
       
       {/* Controls Container Bar */}
-      <section className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-        {/* Search */}
+      <section className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 glass-panel p-5 rounded-[2rem] animate-fade-in-up">
+        {/* MagnifyingGlass */}
         <div className="relative flex-1">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-            <Search className="h-4 w-4" />
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#6E746F]">
+            <MagnifyingGlass weight="duotone" className="h-4 w-4" />
           </span>
           <input
             type="text"
             placeholder="Cari keluhan berdasarkan nama penyewa, nomor kamar..."
-            className="w-full bg-slate-50 text-xs pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-800 transition-all font-medium"
+            className="w-full bg-white text-xs pl-9 pr-3 py-2.5 border border-[rgba(23,59,48,0.15)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#173B30] text-[#171A18] transition-all font-medium"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -144,8 +146,8 @@ export function ComplaintsView({
                 onClick={() => setStatusFilter(st)}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
                   isActive 
-                    ? 'bg-slate-900 text-white shadow-xs' 
-                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                    ? 'bg-[#173B30] text-white shadow-xs' 
+                    : 'bg-white text-[#6E746F] hover:bg-[#FBF9F5] hover:text-[#171A18]'
                 }`}
               >
                 {st} ({st === 'Semua' ? complaints.length : complaints.filter(c => c.status === st).length})
@@ -160,21 +162,21 @@ export function ComplaintsView({
             setShowAddForm(true);
             onSelectComplaintId(null);
           }}
-          className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs animate-pulse-once"
+          className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/20 cursor-pointer transition-transform hover:-translate-y-0.5 animate-pulse-once"
         >
-          <Plus className="h-4 w-4" /> Catat Komplain
+           Catat Komplain
         </button>
       </section>
 
       {/* COMPLAINT DETAILS MODAL OVERLAY */}
       {activeDetailComplaint && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md border border-slate-300 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-[#173B30]/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md border border-[rgba(23,59,48,0.20)] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             
             {/* Modal Heading */}
-            <div className="p-5 bg-slate-900 text-white flex justify-between items-center shrink-0">
+            <div className="p-5 bg-[#173B30] text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-teal-400" />
+                <Wrench weight="duotone" className="h-5 w-5 text-teal-400" />
                 <span className="font-extrabold text-base">Tiket Komplain: No {activeDetailComplaint.roomNumber}</span>
               </div>
               <button 
@@ -182,31 +184,31 @@ export function ComplaintsView({
                   onSelectComplaintId(null);
                   setShowCompleteAction(false);
                 }}
-                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                className="p-1 rounded-full text-[#6E746F] hover:text-white hover:bg-[#0f2720] cursor-pointer"
               >
-                <X className="h-5 w-5" />
+                <X weight="duotone" className="h-5 w-5" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs text-slate-800 font-medium">
+            <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs text-[#171A18] font-medium">
               
               {/* Card Meta details */}
-              <div className="p-4 border border-slate-200 bg-slate-50 rounded-2xl space-y-2">
+              <div className="p-4 border border-[rgba(23,59,48,0.15)] bg-white rounded-2xl space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded text-indigo-700 uppercase font-black tracking-wider">
                     {activeDetailComplaint.status}
                   </span>
                   <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                    activeDetailComplaint.priority === 'Tinggi' ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-slate-100 text-slate-600'
+                    activeDetailComplaint.priority === 'Tinggi' ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-[#FBF9F5] text-[#6E746F]'
                   }`}>
                     Prioritas {activeDetailComplaint.priority}
                   </span>
                 </div>
 
-                <h3 className="text-sm font-black text-slate-950 mt-1">{activeDetailComplaint.title}</h3>
+                <h3 className="text-sm font-black text-[#171A18] mt-1">{activeDetailComplaint.title}</h3>
                 
-                <div className="flex justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-200/50">
+                <div className="flex justify-between text-[11px] text-[#6E746F] pt-2 border-t border-[rgba(23,59,48,0.15)]/50">
                   <span>Nama Tenant: <strong>{activeDetailComplaint.tenantName} (Kamar {activeDetailComplaint.roomNumber})</strong></span>
                   <span>Tanggal Masuk: {activeDetailComplaint.date}</span>
                 </div>
@@ -214,34 +216,34 @@ export function ComplaintsView({
 
               {/* Rincian Masalah */}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-extrabold text-slate-450 uppercase tracking-widest block">Rincian / Deskripsi Laporan:</p>
-                <p className="text-xs text-slate-705 p-3 rounded-xl bg-slate-50 border border-slate-100 leading-relaxed font-semibold">
+                <p className="text-[10px] font-extrabold text-[#6E746F] uppercase tracking-widest block">Rincian / Deskripsi Laporan:</p>
+                <p className="text-xs text-[#171A18] p-3 rounded-xl bg-white border border-[rgba(23,59,48,0.06)] leading-relaxed font-semibold">
                   “ {activeDetailComplaint.description} ”
                 </p>
               </div>
 
               {/* Form to log money if state selected is 'COMPLETE' */}
               {showCompleteAction && (
-                <form onSubmit={handleCompleteExecution} className="p-3 bg-teal-50 border border-teal-200 rounded-2xl space-y-3">
-                  <p className="font-extrabold text-teal-900 border-b border-teal-200/80 pb-1">🔧 Log Biaya & Perbaikan Selesai</p>
+                <form onSubmit={handleCompleteExecution} className="p-3 bg-[#F5F1E8] border border-[rgba(23,59,48,0.2)] rounded-2xl space-y-3">
+                  <p className="font-extrabold text-teal-900 border-b border-[rgba(23,59,48,0.2)]/80 pb-1">🔧 Log Biaya & Perbaikan Selesai</p>
                   
                   <div className="space-y-1">
-                    <label className="text-[9px] font-extrabold text-teal-800 block">BIAYA PERBAIKAN REPARASI (IDR) *</label>
+                    <label className="text-[9px] font-extrabold text-[#0f2720] block">BIAYA PERBAIKAN REPARASI (IDR) *</label>
                     <input
                       type="number"
                       required
                       title="Biaya Perbaikan"
-                      className="w-full bg-white p-2 border border-teal-300 rounded-xl focus:outline-none text-slate-800 font-extrabold"
+                      className="w-full bg-white p-2 border border-teal-300 rounded-xl focus:outline-none text-[#171A18] font-extrabold"
                       value={logRepairCost}
                       onChange={(e) => setLogRepairCost(Number(e.target.value))}
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[9px] font-extrabold text-teal-800 block">CATATAN TEKNISI / PART REPLACED</label>
+                    <label className="text-[9px] font-extrabold text-[#0f2720] block">CATATAN TEKNISI / PART REPLACED</label>
                     <input
                       type="text"
-                      className="w-full bg-white p-2 border border-teal-300 rounded-xl text-slate-850"
+                      className="w-full bg-white p-2 border border-teal-300 rounded-xl text-[#171A18]"
                       placeholder="Ganti wastafel, cuci pipa, cuci filter, dll"
                       value={logNotes}
                       onChange={(e) => setLogNotes(e.target.value)}
@@ -250,7 +252,7 @@ export function ComplaintsView({
 
                   <button
                     type="submit"
-                    className="w-full py-2 bg-teal-700 hover:bg-teal-800 text-white font-extrabold rounded-lg shadow"
+                    className="w-full py-2 bg-[#0f2720] hover:bg-teal-800 text-white font-extrabold rounded-lg shadow"
                   >
                     Simpan & Daftarkan Pengeluaran
                   </button>
@@ -260,15 +262,15 @@ export function ComplaintsView({
               {activeDetailComplaint.status === 'Selesai' && activeDetailComplaint.repairCost && (
                 <div className="p-3 bg-emerald-50 border border-emerald-250 rounded-xl font-medium text-emerald-800 font-bold">
                   <p>✓ TAHAP PERBAIKAN SELESAI</p>
-                  <p className="text-[10px] mt-1 text-slate-600">Total Biaya perbaikan terpotong ke kas: <span className="font-mono font-extrabold text-slate-900">{formatIDR(activeDetailComplaint.repairCost)}</span></p>
-                  {activeDetailComplaint.notes && <p className="text-[10px] text-slate-500 font-serif italic mt-0.5">“{activeDetailComplaint.notes}”</p>}
+                  <p className="text-[10px] mt-1 text-[#6E746F]">Total Biaya perbaikan terpotong ke kas: <span className="font-mono font-extrabold text-[#171A18]">{formatIDR(activeDetailComplaint.repairCost)}</span></p>
+                  {activeDetailComplaint.notes && <p className="text-[10px] text-[#6E746F] font-serif italic mt-0.5">“{activeDetailComplaint.notes}”</p>}
                 </div>
               )}
 
             </div>
 
             {/* Modal Controls footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between gap-3 shrink-0">
+            <div className="p-4 bg-white border-t border-[rgba(23,59,48,0.06)] flex justify-between gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -309,7 +311,7 @@ export function ComplaintsView({
                     onSelectComplaintId(null);
                     setShowCompleteAction(false);
                   }}
-                  className="px-4 py-2.5 bg-slate-200 text-slate-800 hover:bg-slate-300 font-bold rounded-xl cursor-pointer"
+                  className="px-4 py-2.5 bg-[rgba(23,59,48,0.06)] text-[#171A18] hover:bg-[rgba(23,59,48,0.1)] font-bold rounded-xl cursor-pointer"
                 >
                   Tutup
                 </button>
@@ -322,23 +324,23 @@ export function ComplaintsView({
 
       {/* CREATE COMPLAINT DIALOG FORM MODAL */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md border border-slate-300 shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 bg-[#173B30]/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md border border-[rgba(23,59,48,0.20)] shadow-2xl overflow-hidden">
             
-            <div className="p-5 bg-slate-950 text-white flex justify-between items-center">
+            <div className="p-5 bg-[#171A18] text-white flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-teal-400" />
+                <Wrench weight="duotone" className="h-5 w-5 text-teal-400" />
                 <span className="font-extrabold text-base">Catat Laporan Komplain</span>
               </div>
               <button 
                 onClick={() => setShowAddForm(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                className="p-1 rounded-full text-[#6E746F] hover:text-white hover:bg-[#0f2720] cursor-pointer"
               >
-                <X className="h-5 w-5" />
+                <X weight="duotone" className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="p-6 space-y-4 text-xs text-slate-800">
+            <form onSubmit={handleAddSubmit} className="p-6 space-y-4 text-xs text-[#171A18]">
               {formError && (
                 <div className="p-3 text-xs bg-rose-50 text-rose-600 border border-rose-100 rounded-xl font-medium">
                   ⚠️ {formError}
@@ -346,29 +348,25 @@ export function ComplaintsView({
               )}
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block">PILIH PENYEBAB / PENY_KOS *</label>
-                <select
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl font-bold"
+                <label className="text-[10px] font-extrabold text-[#6E746F] block">PILIH PENYEBAB / PENY_KOS *</label>
+                <ElegantSelect
                   value={compTenantId}
-                  onChange={(e) => setCompTenantId(e.target.value)}
-                >
-                  <option value="">-- Pilih Penyewa --</option>
-                  {tenants.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} (Kamar {t.roomAssigned})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setCompTenantId(val)}
+                  placeholder="-- Pilih Penyewa --"
+                  options={tenants.map(t => ({
+                    value: t.id,
+                    label: `${t.name} (Kamar ${t.roomAssigned})`
+                  }))}
+                />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block">JUDUL KELUHAN (RINGKAS) *</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block">JUDUL KELUHAN (RINGKAS) *</label>
                 <input
                   type="text"
                   required
                   placeholder="Contoh: AC Kamar bocor air kotor, Kunci pintu patah..."
-                  className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-slate-800 font-bold"
+                  className="w-full bg-white border border-[rgba(23,59,48,0.15)] p-2.5 rounded-xl text-[#171A18] font-bold"
                   value={compTitle}
                   onChange={(e) => setCompTitle(e.target.value)}
                 />
@@ -376,42 +374,42 @@ export function ComplaintsView({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 block">KATEGORI PERUSAKAN</label>
-                  <select
-                    className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-slate-800 font-bold"
+                  <label className="text-[10px] font-extrabold text-[#6E746F] block">KATEGORI PERUSAKAN</label>
+                  <ElegantSelect
                     value={compCategory}
-                    onChange={(e) => setCompCategory(e.target.value as ComplaintCategory)}
-                  >
-                    <option value="Air">Air / Saluran Pipa</option>
-                    <option value="Listrik">Listrik / Lampu</option>
-                    <option value="AC/Kipas">AC / Penyejuk Ruangan</option>
-                    <option value="Kamar mandi">Kamar Mandi</option>
-                    <option value="Pintu/Kunci">Kunci & Pintu Kamar</option>
-                    <option value="Internet">Internet WiFi</option>
-                    <option value="Kebersihan">Kebersihan Lorong</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
+                    onChange={(val) => setCompCategory(val as ComplaintCategory)}
+                    options={[
+                      { value: 'Air', label: 'Air / Saluran Pipa' },
+                      { value: 'Listrik', label: 'Listrik / Lampu' },
+                      { value: 'AC/Kipas', label: 'AC / Penyejuk Ruangan' },
+                      { value: 'Kamar mandi', label: 'Kamar Mandi' },
+                      { value: 'Pintu/Kunci', label: 'Kunci & Pintu Kamar' },
+                      { value: 'Internet', label: 'Internet WiFi' },
+                      { value: 'Kebersihan', label: 'Kebersihan Lorong' },
+                      { value: 'Lainnya', label: 'Lainnya' }
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 block">SKALA PRIORITAS</label>
-                  <select
-                    className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-slate-800 font-bold"
+                  <label className="text-[10px] font-extrabold text-[#6E746F] block">SKALA PRIORITAS</label>
+                  <ElegantSelect
                     value={compPriority}
-                    onChange={(e) => setCompPriority(e.target.value as ComplaintPriority)}
-                  >
-                    <option value="Rendah">Rendah (Santai)</option>
-                    <option value="Sedang">Sedang (Butuh Dicek)</option>
-                    <option value="Tinggi">Tinggi (Urgensi Ekstrim)</option>
-                  </select>
+                    onChange={(val) => setCompPriority(val as ComplaintPriority)}
+                    options={[
+                      { value: 'Rendah', label: 'Rendah (Santai)' },
+                      { value: 'Sedang', label: 'Sedang (Butuh Dicek)' },
+                      { value: 'Tinggi', label: 'Tinggi (Urgensi Ekstrim)' }
+                    ]}
+                  />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 block font-bold">RINCIAN DESKRIPSI MASALAH *</label>
+                <label className="text-[10px] font-extrabold text-[#6E746F] block font-bold">RINCIAN DESKRIPSI MASALAH *</label>
                 <textarea
                   required
-                  className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs text-slate-800"
+                  className="w-full bg-white border border-[rgba(23,59,48,0.15)] p-2.5 rounded-xl text-xs text-[#171A18]"
                   rows={3}
                   placeholder="AC menetes kencang sejak tadi malam jam 8 malam, kasur basah kuyup..."
                   value={compDesc}
@@ -419,18 +417,18 @@ export function ComplaintsView({
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex justify-end gap-2 text-xs">
+              <div className="pt-4 border-t border-[rgba(23,59,48,0.06)] flex justify-end gap-2 text-xs">
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 bg-slate-50 text-slate-500 rounded-xl font-bold cursor-pointer hover:bg-slate-100"
+                  className="px-4 py-2 bg-white text-[#6E746F] rounded-xl font-bold cursor-pointer hover:bg-[#FBF9F5]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   id="btn-save-complaint"
-                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow shadow-teal-500/10 cursor-pointer animate-pulse-once"
+                  className="px-5 py-2 bg-[#173B30] hover:bg-[#0f2720] text-white font-bold rounded-xl shadow shadow-teal-500/10 cursor-pointer animate-pulse-once"
                 >
                   Daftarkan Tiket
                 </button>
@@ -442,10 +440,10 @@ export function ComplaintsView({
 
       {/* DYNAMIC LISTING TICKETS GRID */}
       {filteredComplaints.length === 0 ? (
-        <div id="complaints-empty-state" className="p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-xs max-w-sm mx-auto">
-          <span className="text-4xl text-slate-300 block">🛠️</span>
-          <h3 className="text-sm font-black text-slate-700 mt-3">Tidak Ada Komplain</h3>
-          <p className="text-[10px] text-slate-400 mt-1 mb-5">
+        <div id="complaints-empty-state" className="p-12 text-center bg-white rounded-3xl border border-[rgba(23,59,48,0.15)] shadow-xs max-w-sm mx-auto">
+          <span className="text-4xl text-[#A8B7A1] block">🛠️</span>
+          <h3 className="text-sm font-black text-[#171A18] mt-3">Tidak Ada Komplain</h3>
+          <p className="text-[10px] text-[#6E746F] mt-1 mb-5">
             Lega! Belum ada tiket komplain aktif dikirim lewat filter kriteria "{statusFilter}" atau pencarian "{searchQuery}".
           </p>
           <button 
@@ -453,7 +451,7 @@ export function ComplaintsView({
               setSearchQuery('');
               setStatusFilter('Semua');
             }}
-            className="py-1.5 px-4 bg-teal-600 text-white font-bold text-[10px] rounded-lg cursor-pointer"
+            className="py-1.5 px-4 bg-[#173B30] text-white font-bold text-[10px] rounded-lg cursor-pointer"
           >
             Clear Filters
           </button>
@@ -465,50 +463,54 @@ export function ComplaintsView({
             const isTinggi = comp.priority === 'Tinggi';
             
             // Background classes status
-            let cardStatusClass = 'border-slate-200 hover:border-slate-350';
-            if (comp.status === 'Baru') cardStatusClass = 'border-amber-300 bg-amber-50/5 hover:border-amber-400';
-            if (comp.status === 'Diproses') cardStatusClass = 'border-purple-355 hover:border-purple-400';
+            let cardStatusClass = 'hover:shadow-teal-500/10 border-transparent';
+            if (comp.status === 'Baru') cardStatusClass = 'border-amber-200/50 hover:shadow-amber-500/10 bg-amber-50/20';
+            if (comp.status === 'Diproses') cardStatusClass = 'border-indigo-200/50 hover:shadow-indigo-500/10 bg-indigo-50/20';
             
             return (
               <div 
                 key={comp.id}
-                className={`bg-white rounded-3xl border p-5 shadow-xs transition-all hover:translate-y-[-1px] flex flex-col justify-between ${cardStatusClass}`}
+                className={`glass-panel p-5 sm:p-6 rounded-[2rem] border transition-all duration-500 flex flex-col justify-between group hover:-translate-y-1 hover:shadow-2xl animate-fade-in-up delay-100 ${cardStatusClass}`}
               >
                 <div>
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🔧</span>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border border-[rgba(23,59,48,0.15)] flex items-center justify-center text-xl shadow-sm">
+                        🔧
+                      </div>
                       <div>
-                        <h4 className="text-xs font-black text-slate-900 leading-none">{comp.title}</h4>
-                        <span className="text-[8px] font-bold text-slate-400 font-mono mt-1 block">Kmr {comp.roomNumber} • {comp.category}</span>
+                        <h4 className="text-sm font-display font-black text-[#171A18] leading-tight group-hover:text-[#173B30] transition-colors line-clamp-1">{comp.title}</h4>
+                        <span className="text-[10px] font-bold text-[#6E746F] mt-1 block tracking-wider">Kmr {comp.roomNumber} • {comp.category}</span>
                       </div>
                     </div>
 
-                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${
-                      isCompleted ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-rose-50 text-rose-800 border-rose-100'
+                    <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase shadow-sm whitespace-nowrap ${
+                      isCompleted ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
                     }`}>
                       {comp.status}
                     </span>
                   </div>
 
-                  <p className="text-[10px] text-slate-500 line-clamp-2 mt-2 leading-relaxed">
-                    “{comp.description}”
-                  </p>
+                  <div className="p-3 bg-white/80 border border-[rgba(23,59,48,0.15)]/60 rounded-xl mt-3">
+                    <p className="text-[11px] text-[#6E746F] line-clamp-2 leading-relaxed font-medium italic">
+                      “{comp.description}”
+                    </p>
+                  </div>
 
-                  <div className="mt-3 flex justify-between items-center text-[10px]">
-                    <span className="text-slate-400">Penyetor: <strong>{comp.tenantName}</strong></span>
-                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase ${
-                      isTinggi ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-slate-100 text-slate-600'
+                  <div className="mt-4 flex justify-between items-center text-[11px]">
+                    <span className="text-[#6E746F]">Dari: <strong className="text-[#171A18]">{comp.tenantName}</strong></span>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black tracking-widest uppercase shadow-sm border ${
+                      isTinggi ? 'bg-rose-100 text-rose-700 border-rose-200 animate-pulse' : 'bg-white text-[#6E746F] border-[rgba(23,59,48,0.15)]'
                     }`}>
-                      Priority: {comp.priority}
+                      {comp.priority}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100">
+                <div className="mt-5 flex items-center gap-2">
                   <button
                     onClick={() => onSelectComplaintId(comp.id)}
-                    className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-[10px] font-extrabold text-slate-700 rounded-lg text-center transition-all cursor-pointer"
+                    className="w-full py-2.5 bg-[#173B30] hover:bg-[#0f2720] text-white text-[11px] font-bold rounded-xl text-center transition-all cursor-pointer shadow-md"
                   >
                     Buka Tiket Laporan
                   </button>
