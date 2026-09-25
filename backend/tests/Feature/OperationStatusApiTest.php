@@ -23,4 +23,15 @@ class OperationStatusApiTest extends TestCase
 
         $this->assertEquals('Completed', $task->fresh()->status);
     }
+
+    public function test_task_without_room_is_accepted_as_general_area_task()
+    {
+        $user = User::create(['name' => 'Owner', 'phone' => '081400000003', 'password' => bcrypt('secret123'), 'role' => 'owner', 'status' => 'active', 'plan' => 'pro', 'slug' => 'owner-op2']);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/operations', ['id' => 'op2', 'propertyId' => 'prop-1', 'type' => 'Cleaning', 'title' => 'Lobby', 'roomNumber' => '', 'priority' => 'Sedang', 'status' => 'Open', 'assignedTo' => 'Staff A'])
+            ->assertStatus(200);
+
+        $this->assertSame('', OperationTask::where('custom_id', 'op2')->first()->room_number);
+    }
 }

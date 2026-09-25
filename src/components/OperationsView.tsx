@@ -143,7 +143,7 @@ export function OperationsView({
 
               <div className="flex items-center gap-2 text-xs text-[#6E746F] mt-1.5 font-medium">
                 <Buildings weight="duotone" className="h-4 w-4 text-[#A8B7A1]" />
-                <span className="text-[#171A18]">Kamar {task.roomNumber}</span>
+                <span className="text-[#171A18]">{!task.roomNumber ? 'Area umum' : /^kamar/i.test(task.roomNumber) ? task.roomNumber : `Kamar ${task.roomNumber}`}</span>
                 <span>•</span>
                 <span>{task.createdAt}</span>
               </div>

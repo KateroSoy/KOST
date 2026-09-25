@@ -19,7 +19,8 @@ Route::get('/health', fn () => response()->json(['ok' => true]));
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login',    [AuthController::class, 'login']);
 Route::get('/public/owner/{slug}', [PublicController::class, 'show']);
-Route::get('/public/properties/{id}', [PublicController::class, 'property']);
+Route::get('/public/properties', [PublicController::class, 'index'])->middleware('throttle:60,1');
+Route::get('/public/properties/{id}',[PublicController::class, 'property']);
 Route::post('/public/properties/{id}/bookings', [PublicController::class, 'book'])->middleware('throttle:10,1');
 
 // Protected routes (require Bearer token via Sanctum)

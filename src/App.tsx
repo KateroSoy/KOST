@@ -3,7 +3,7 @@ import {
   Room, Tenant, Bill, Expense, Complaint, KostSettings, Property,
   ComplaintStatus, RoomStatus, TenantStatus, HousekeepingStatus, UserRole,
   Booking, BookingStatus, WebsiteConfig, OperationTask, OperationStatus, StaffMember,
-  AuthUser
+  AuthUser, PropertyType
 } from './types';
 import { 
   INITIAL_SETTINGS, 
@@ -54,6 +54,25 @@ import {
 
 const PRO_TAB_IDS: DashboardTab[] = ['bookings', 'website', 'operations', 'team', 'reports'];
 
+// Website config for a property that has none saved yet. Demo configs are only reused for the
+// demo property ids themselves; real properties get their own subdomain and copy, because
+// subdomain/customDomain are globally unique on the backend.
+const websiteConfigFor = (prop: Property | undefined, subdomain?: string): WebsiteConfig => {
+  if (!prop) return INITIAL_WEBSITE_CONFIGS['prop-1'];
+  if (INITIAL_WEBSITE_CONFIGS[prop.id]) return INITIAL_WEBSITE_CONFIGS[prop.id];
+  const demo = INITIAL_WEBSITE_CONFIGS['prop-1'];
+  return {
+    ...demo,
+    propertyId: prop.id,
+    subdomain: subdomain || prop.slug || prop.name.toLowerCase().replace(/[^a-z0-9]/g, '') || prop.id,
+    customDomain: undefined,
+    headline: `Selamat datang di ${prop.name}.`,
+    subheadline: 'Kamar nyaman, fasilitas lengkap, dan pengelolaan yang responsif.',
+    aboutText: `${prop.name} siap menjadi tempat tinggal yang nyaman untuk Anda.`,
+    whatsappDirect: prop.whatsapp || demo.whatsappDirect,
+  };
+};
+
 export default function App() {
   const initialRoute = parseCurrentRoute();
   
@@ -71,7 +90,7 @@ export default function App() {
     return initialRoute.propertyId || 'prop-1';
   });
   const [publicPropertyData, setPublicPropertyData] = useState<PublicPropertyData | null>(null);
-  const [publicPropertyLoading, setPublicPropertyLoading] = useState(initialRoute.authMode === 'property-website' && !getToken());
+  const [publicPropertyLoading, setPublicPropertyLoading] = useState(initialRoute.authMode === 'property-website');
 
   // Contextual back navigation origin ('landing' | 'website' | 'settings' | 'dashboard')
   const [returnSource, setReturnSource] = useState<string | undefined>(() => {
@@ -318,8 +337,12 @@ export default function App() {
     return () => setPlanLockedHandler(null);
   }, []);
 
+  // A signed-in owner previewing one of their own properties renders from local state;
+  // any other property (e.g. opened from the landing-page catalog) comes from the public API.
+  const isOwnPreview = !!getToken() && properties.some(p => p.id === previewPropertyId);
+
   useEffect(() => {
-    if (authMode !== 'property-website' || getToken()) return;
+    if (authMode !== 'property-website' || isOwnPreview) return;
     let cancelled = false;
     setPublicPropertyData(null);
     setPublicPropertyLoading(true);
@@ -328,7 +351,7 @@ export default function App() {
       .catch(() => { if (!cancelled) setPublicPropertyData(null); })
       .finally(() => { if (!cancelled) setPublicPropertyLoading(false); });
     return () => { cancelled = true; };
-  }, [authMode, previewPropertyId]);
+  }, [authMode, previewPropertyId, isOwnPreview]);
 
   // Refresh the authenticated user (plan/trial fields) whenever we enter the dashboard
   useEffect(() => {
@@ -553,7 +576,8 @@ export default function App() {
     roomCount: number,
     basePrice: number,
     templateId?: string,
-    subdomain?: string
+    subdomain?: string,
+    propertyMeta?: { city: string; type: PropertyType }
   ) => {
     const newSettings = { ...kostSettings, ...kostConfig };
     const propId = localStorage.getItem('kostos_onboarding_property_id') || generateId('prop');
@@ -561,10 +585,10 @@ export default function App() {
     const property: Property = {
       id: propId,
       name: newSettings.kostName,
-      type: 'Coliving',
+      type: propertyMeta?.type || 'Coliving',
       slug: subdomain || '',
       address: newSettings.address,
-      city: '',
+      city: propertyMeta?.city || '',
       description: '',
       whatsapp: newSettings.whatsapp,
       ownerName: newSettings.ownerName,
@@ -579,7 +603,7 @@ export default function App() {
       generatedRooms.push({
         id: `room-${propId}-${i}`,
         propertyId: propId,
-        number: `Kamar ${i < 10 ? '0' + i : i}`,
+        number: i < 10 ? '0' + i : String(i), // views already prefix "Kamar "
         status: 'Kosong',
         housekeepingStatus: 'Bersih',
         type: i % 3 === 0 ? 'Studio Plus' : 'Studio',
@@ -592,17 +616,22 @@ export default function App() {
         images: ['https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&auto=format&fit=crop&q=80']
       });
     }
-    const roomResults = await Promise.all(generatedRooms.map(room => syncToBackend('rooms', 'POST', room)));
-    if (roomResults.some(saved => !saved)) throw new Error('Sebagian kamar gagal disimpan. Coba lagi.');
+    // Small batches: shared hosting caps concurrent PHP/MySQL connections, and up to 40
+    // parallel POSTs trip "[2002] Operation not permitted".
+    for (let i = 0; i < generatedRooms.length; i += 4) {
+      const batch = generatedRooms.slice(i, i + 4);
+      const saved = await Promise.all(batch.map(room => syncToBackend('rooms', 'POST', room)));
+      if (saved.some(ok => !ok)) throw new Error('Sebagian kamar gagal disimpan. Coba lagi.');
+    }
 
     // Update website config if template and subdomain are provided
     if (templateId || subdomain) {
-      const existingConfig = websiteConfigs[propId] || INITIAL_WEBSITE_CONFIGS['prop-1'];
+      const existingConfig = websiteConfigs[propId] || websiteConfigFor(property, subdomain);
       const newConfig = {
         ...existingConfig,
         propertyId: propId,
         templateId: (templateId || existingConfig.templateId) as any,
-        customDomain: subdomain ? `${subdomain}.bisniesgo.id` : existingConfig.customDomain
+        subdomain: subdomain || existingConfig.subdomain,
       };
       if (!await syncToBackend('website-configs', 'POST', newConfig)) {
         throw new Error('Tampilan website gagal disimpan. Coba lagi.');
@@ -917,7 +946,7 @@ export default function App() {
       case 'website': {
         const propScope = selectedPropertyId !== 'all' ? selectedPropertyId : (properties[0]?.id || 'prop-1');
         const currentProp = properties.find(p => p.id === propScope) || properties[0];
-        const currentConfig = websiteConfigs[propScope] || INITIAL_WEBSITE_CONFIGS[propScope] || INITIAL_WEBSITE_CONFIGS['prop-1'];
+        const currentConfig = websiteConfigs[propScope] || websiteConfigFor(currentProp);
         return (
           <WebsiteEditorView
             property={currentProp}
@@ -1010,8 +1039,6 @@ export default function App() {
   if (authMode === 'landing') {
     return (
       <LandingPage 
-        properties={properties}
-        rooms={rooms}
         onStartDemo={() => {
           localStorage.setItem('kostos_logged_in', 'true');
           setIsDemoMode(true);
@@ -1029,10 +1056,10 @@ export default function App() {
   }
 
   if (authMode === 'property-website') {
-    if (!getToken() && publicPropertyLoading) {
+    if (!isOwnPreview && publicPropertyLoading) {
       return <div className="min-h-screen grid place-items-center text-[#173B30]">Memuat properti...</div>;
     }
-    if (!getToken() && !publicPropertyData && !properties.some(p => p.id === previewPropertyId)) {
+    if (!isOwnPreview && !publicPropertyData && !properties.some(p => p.id === previewPropertyId)) {
       return <div className="min-h-screen grid place-items-center text-[#173B30]">Properti tidak ditemukan.</div>;
     }
     const currentProp = publicPropertyData?.property?.id === previewPropertyId
@@ -1040,7 +1067,7 @@ export default function App() {
       : properties.find(p => p.id === previewPropertyId) || properties[0];
     const currentConfig = publicPropertyData?.property?.id === previewPropertyId
       ? publicPropertyData.websiteConfig
-      : websiteConfigs[currentProp.id] || INITIAL_WEBSITE_CONFIGS[currentProp.id] || INITIAL_WEBSITE_CONFIGS['prop-1'];
+      : websiteConfigs[currentProp.id] || websiteConfigFor(currentProp);
     
     const backButtonLabel = returnSource === 'website' 
       ? 'Kembali ke Editor' 
@@ -1076,7 +1103,7 @@ export default function App() {
             notes: bookingData.notes,
             createdAt: new Date().toISOString().split('T')[0]
           };
-          if (getToken()) {
+          if (isOwnPreview) {
             const saved = await syncToBackend('bookings', 'POST', newBooking);
             if (!saved) throw new Error('Permintaan booking gagal disimpan.');
             setBookings(prev => [newBooking, ...prev]);
@@ -1085,6 +1112,7 @@ export default function App() {
           }
         }}
         onSelectTemplate={(tmpl) => {
+          if (!isOwnPreview) return;
           const updatedConfig = {
             ...(websiteConfigs[currentProp.id] || currentConfig),
             templateId: tmpl

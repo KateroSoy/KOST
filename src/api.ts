@@ -246,6 +246,39 @@ export const fetchPublicPropertyData = async (id: string): Promise<PublicPropert
   return data;
 };
 
+export interface PublicListing {
+  id: string;
+  name: string;
+  type: string;
+  city?: string;
+  address?: string;
+  coverImage?: string | null;
+  facilities: string[];
+  availableRooms: number;
+  startPriceMonth?: number | null;
+  startPriceDay?: number | null;
+  rentalTypes: ('Bulanan' | 'Harian')[];
+}
+
+export interface ListingFilters {
+  q?: string;
+  type?: string;
+  duration?: '' | 'Bulanan' | 'Harian';
+}
+
+export const fetchPublicListings = async (filters: ListingFilters = {}): Promise<PublicListing[]> => {
+  const query = new URLSearchParams();
+  if (filters.q?.trim()) query.set('q', filters.q.trim());
+  if (filters.type) query.set('type', filters.type);
+  if (filters.duration) query.set('duration', filters.duration);
+  const res = await fetch(`/api/public/properties${query.toString() ? `?${query}` : ''}`, {
+    headers: { Accept: 'application/json' },
+  });
+  const data = await parseJsonResponse(res);
+  if (!res.ok || !Array.isArray(data)) throw new Error(data?.error || 'Gagal memuat daftar hunian');
+  return data;
+};
+
 export const submitPublicBooking = async (propertyId: string, booking: Partial<import('./types').Booking>): Promise<void> => {
   const res = await fetch(`/api/public/properties/${encodeURIComponent(propertyId)}/bookings`, {
     method: 'POST',
@@ -424,11 +457,35 @@ const computeLocalReportsAggregate = (params: {
 
 // ─── Data fetch (GET) — tries API, falls back to LocalStorage ─────────────────
 
+// GET with retries for transient failures. Shared hosting caps concurrent MySQL
+// connections, so a burst of parallel GETs can briefly return 500 ("[2002] Operation
+// not permitted"). Treating that as "no data" would wipe the user's view.
+const getWithRetry = async (path: string, attempts = 3): Promise<Response> => {
+  for (let i = 1; ; i++) {
+    try {
+      const res = await fetchWithAuth(path);
+      if (res.status < 500 || i >= attempts) return res;
+    } catch (err) {
+      if (i >= attempts) throw err;
+    }
+    await new Promise(r => setTimeout(r, 400 * i));
+  }
+};
+
+// GET a list endpoint; throws unless the response is a successful JSON array.
+const getList = async (path: string): Promise<any[]> => {
+  const res = await getWithRetry(path);
+  if (!res.ok) throw new Error(`${path} gagal dimuat (${res.status})`);
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error(`${path} mengembalikan data tidak valid`);
+  return data;
+};
+
 // Returns null when the fetch failed (so callers can fall back to cache),
 // or the (possibly empty) array on a genuine successful response.
 const fetchProResource = async (path: string): Promise<any[] | null> => {
   try {
-    const res = await fetchWithAuth(path);
+    const res = await getWithRetry(path);
     if (res.status === 403) {
       const data = await parseJsonResponse(res).catch(() => null);
       if (data?.code === 'PLAN_LOCKED') planLockedHandler?.();
@@ -450,7 +507,7 @@ export const fetchAllData = async () => {
   }
 
   try {
-    const healthRes = await fetchWithAuth('/api/settings');
+    const healthRes = await getWithRetry('/api/settings');
     if (healthRes.status === 401) {
       // Token expired
       clearToken();
@@ -463,12 +520,12 @@ export const fetchAllData = async () => {
     // Fetch all endpoints in parallel
     const [settings, rooms, tenants, bills, expenses, complaints, propertiesResult, bookingsResult, operationsResult, staffResult, websiteConfigsResult] = await Promise.all([
       healthRes.json(),
-      fetchWithAuth('/api/rooms').then(r => r.json()),
-      fetchWithAuth('/api/tenants').then(r => r.json()),
-      fetchWithAuth('/api/bills').then(r => r.json()),
-      fetchWithAuth('/api/expenses').then(r => r.json()),
-      fetchWithAuth('/api/complaints').then(r => r.json()),
-      fetchWithAuth('/api/properties').then(r => r.ok ? r.json() : []).catch(() => []),
+      getList('/api/rooms'),
+      getList('/api/tenants'),
+      getList('/api/bills'),
+      getList('/api/expenses'),
+      getList('/api/complaints'),
+      getList('/api/properties'),
       fetchProResource('/api/bookings'),
       fetchProResource('/api/operations'),
       fetchProResource('/api/staff'),

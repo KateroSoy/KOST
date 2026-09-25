@@ -831,7 +831,7 @@ function BookingModal({ theme, property, state }: any) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">Nomor WhatsApp *</label>
-                  <input required value={state.guestPhone} onChange={e => state.setGuestPhone(e.target.value)} className={styles.input} placeholder="081234567890" />
+                  <input required type="tel" inputMode="tel" autoComplete="tel" minLength={9} value={state.guestPhone} onChange={e => state.setGuestPhone(e.target.value)} className={styles.input} placeholder="081234567890" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">Email</label>
@@ -1084,7 +1084,7 @@ function SanderTemplate({ property, websiteConfig, isOwnerPreview, onBackToDashb
                     <input required value={state.guestName} onChange={e => state.setGuestName(e.target.value)} className="w-full bg-[#F0F2F5] rounded-xl px-4 py-4 outline-none focus:ring-2 focus:ring-black transition-all" placeholder="Full Name *" />
                   </div>
                   <div>
-                    <input required value={state.guestPhone} onChange={e => state.setGuestPhone(e.target.value)} className="w-full bg-[#F0F2F5] rounded-xl px-4 py-4 outline-none focus:ring-2 focus:ring-black transition-all" placeholder="WhatsApp Number *" />
+                    <input required type="tel" inputMode="tel" autoComplete="tel" minLength={9} value={state.guestPhone} onChange={e => state.setGuestPhone(e.target.value)} className="w-full bg-[#F0F2F5] rounded-xl px-4 py-4 outline-none focus:ring-2 focus:ring-black transition-all" placeholder="WhatsApp Number *" />
                   </div>
                   <div>
                     <input type="email" value={state.guestEmail} onChange={e => state.setGuestEmail(e.target.value)} className="w-full bg-[#F0F2F5] rounded-xl px-4 py-4 outline-none focus:ring-2 focus:ring-black transition-all" placeholder="Email Address" />
@@ -1298,7 +1298,7 @@ function HearthlyTemplate({ property, websiteConfig, isOwnerPreview, onBackToDas
                   {state.bookingError && <p role="alert" className="text-sm text-rose-700">{state.bookingError}</p>}
                   <div className="space-y-6">
                     <input required value={state.guestName} onChange={e => state.setGuestName(e.target.value)} className="w-full bg-transparent border-b-2 border-black px-0 py-4 outline-none focus:border-black/50 text-xl font-bold placeholder-black/30 transition-colors rounded-none" placeholder="FULL NAME" />
-                    <input required value={state.guestPhone} onChange={e => state.setGuestPhone(e.target.value)} className="w-full bg-transparent border-b-2 border-black px-0 py-4 outline-none focus:border-black/50 text-xl font-bold placeholder-black/30 transition-colors rounded-none" placeholder="WHATSAPP NUMBER" />
+                    <input required type="tel" inputMode="tel" autoComplete="tel" minLength={9} value={state.guestPhone} onChange={e => state.setGuestPhone(e.target.value)} className="w-full bg-transparent border-b-2 border-black px-0 py-4 outline-none focus:border-black/50 text-xl font-bold placeholder-black/30 transition-colors rounded-none" placeholder="WHATSAPP NUMBER" />
                     <input type="email" value={state.guestEmail} onChange={e => state.setGuestEmail(e.target.value)} className="w-full bg-transparent border-b-2 border-black px-0 py-4 outline-none focus:border-black/50 text-xl font-bold placeholder-black/30 transition-colors rounded-none" placeholder="EMAIL (OPTIONAL)" />
                   </div>
                   <button type="submit" disabled={state.bookingSaving} className="w-full bg-black text-white py-6 font-black text-xl tracking-tighter uppercase hover:bg-white hover:text-black hover:shadow-[0_0_0_4px_black_inset] transition-all mt-8">

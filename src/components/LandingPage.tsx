@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Buildings, MagnifyingGlass, MapPin, CalendarBlank, Users, CaretDown, Star, Heart, ArrowRight, ArrowUpRight, ShieldCheck, WifiHigh, Armchair, CheckCircle, Globe, House, Compass, Stack } from '@phosphor-icons/react';
 import { motion, useScroll, useSpring } from 'motion/react';
-import { Property, Room } from '../types';
+import { PropertyType } from '../types';
+import { INITIAL_PROPERTIES, INITIAL_ROOMS } from '../data';
+import { fetchPublicListings, ListingFilters, PublicListing } from '../api';
 import { TiltCard3D } from './TiltCard3D';
 
 interface LandingPageProps {
@@ -9,18 +11,120 @@ interface LandingPageProps {
   onGoToLogin: () => void;
   onGoToRegister: () => void;
   onViewPropertyWebsite?: (propId: string) => void;
-  properties?: Property[];
-  rooms?: Room[];
 }
+
+const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
+  { value: 'Kost', label: 'Kost' },
+  { value: 'Coliving', label: 'Coliving' },
+  { value: 'Apartemen', label: 'Apartemen' },
+  { value: 'Villa', label: 'Villa' },
+  { value: 'Guest House', label: 'Guest House' },
+  { value: 'Homestay', label: 'Homestay' },
+  { value: 'Small Hotel', label: 'Small Hotel' },
+];
+
+const DESTINATIONS = [
+  { label: 'Yogyakarta', query: 'Yogyakarta' },
+  { label: 'Jakarta', query: 'Jakarta' },
+  { label: 'Bali (Canggu & Ubud)', query: 'Bali' },
+  { label: 'Bandung', query: 'Bandung' },
+];
+
+// Demo catalog shown only when no owner has published a website yet (or the API is down).
+// Mirrors the backend's listing rules so filtering behaves the same.
+const DEMO_LISTINGS: PublicListing[] = INITIAL_PROPERTIES.map(p => {
+  const free = INITIAL_ROOMS.filter(r => r.propertyId === p.id && r.status === 'Kosong');
+  const supports = (r: typeof free[number], kind: 'Bulanan' | 'Harian') =>
+    r.rentalTypesAllowed?.length ? r.rentalTypesAllowed.includes(kind)
+      : kind === 'Harian' ? (r.pricePerDay || 0) > 0 : (r.pricePerMonth || r.price) > 0;
+  const monthly = free.filter(r => supports(r, 'Bulanan'));
+  const daily = free.filter(r => supports(r, 'Harian'));
+  return {
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    city: p.city,
+    address: p.address,
+    coverImage: p.coverImage,
+    facilities: (p.facilities || []).slice(0, 6),
+    availableRooms: free.length,
+    startPriceMonth: monthly.length ? Math.min(...monthly.map(r => r.pricePerMonth || r.price)) : p.startPriceMonth,
+    startPriceDay: daily.length ? Math.min(...daily.map(r => r.pricePerDay || 0)) : p.startPriceDay,
+    rentalTypes: [...(monthly.length ? ['Bulanan' as const] : []), ...(daily.length ? ['Harian' as const] : [])],
+  };
+});
+
+const filterListings = (list: PublicListing[], f: ListingFilters) => {
+  const q = (f.q || '').trim().toLowerCase();
+  return list.filter(l =>
+    (!q || [l.name, l.city, l.address].some(v => (v || '').toLowerCase().includes(q))) &&
+    (!f.type || l.type === f.type) &&
+    (!f.duration || l.rentalTypes.includes(f.duration)));
+};
+
+const formatIDR = (n?: number | null) => `Rp ${(n || 0).toLocaleString('id-ID')}`;
 
 export function LandingPage({
   onStartDemo,
   onGoToLogin,
   onGoToRegister,
   onViewPropertyWebsite,
-  properties = [],
-  rooms = []
 }: LandingPageProps) {
+
+  // Search form fields, and the filters of the search currently shown.
+  const [q, setQ] = useState('');
+  const [type, setType] = useState('');
+  const [duration, setDuration] = useState<ListingFilters['duration']>('');
+  const [applied, setApplied] = useState<ListingFilters | null>(null);
+  const [listings, setListings] = useState<PublicListing[]>([]);
+  const [isDemoCatalog, setIsDemoCatalog] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [catalogSize, setCatalogSize] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicListings()
+      .then(rows => {
+        if (cancelled) return;
+        setIsDemoCatalog(rows.length === 0);
+        setListings(rows.length ? rows : DEMO_LISTINGS);
+        setCatalogSize(rows.length || DEMO_LISTINGS.length);
+      })
+      .catch(() => { if (!cancelled) { setIsDemoCatalog(true); setListings(DEMO_LISTINGS); setCatalogSize(DEMO_LISTINGS.length); } })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const scrollToResults = () => document.getElementById('featured')?.scrollIntoView({ behavior: 'smooth' });
+
+  const runSearch = async (filters: ListingFilters) => {
+    setQ(filters.q || '');
+    setType(filters.type || '');
+    setDuration(filters.duration || '');
+    const active = filters.q?.trim() || filters.type || filters.duration ? filters : null;
+    setApplied(active);
+    setLoading(true);
+    scrollToResults();
+    try {
+      if (isDemoCatalog) {
+        setListings(filterListings(DEMO_LISTINGS, filters));
+      } else {
+        setListings(await fetchPublicListings(filters));
+      }
+    } catch {
+      setListings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runSearch({ q, type, duration });
+  };
+
+  const resetSearch = () => runSearch({});
+  const featured = listings[0];
 
   // Minimalist top scroll progress indicator
   const { scrollYProgress } = useScroll();
@@ -52,14 +156,14 @@ export function LandingPage({
           
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="flex flex-col cursor-pointer" onClick={onStartDemo}>
+            <button type="button" aria-label="BISNIESGO Living — ke atas" className="flex flex-col items-start cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <span className="text-xl font-bold tracking-tight text-[#153428] font-editorial leading-tight">
                 BISNIESGO
               </span>
               <span className="text-xs font-medium text-[#153428] tracking-widest pl-0.5">
                 Living
               </span>
-            </div>
+            </button>
           </div>
 
           {/* Center Navigation */}
@@ -76,7 +180,7 @@ export function LandingPage({
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               onClick={onStartDemo}
-              className="text-xs font-bold text-[#153428] hover:bg-black/5 px-4 py-2 rounded-full border border-[#153428]/30 transition-colors cursor-pointer shadow-xs"
+              className="hidden sm:inline-flex whitespace-nowrap text-xs font-bold text-[#153428] hover:bg-black/5 px-4 py-2 rounded-full border border-[#153428]/30 transition-colors cursor-pointer shadow-xs"
             >
               Coba Demo
             </motion.button>
@@ -84,7 +188,7 @@ export function LandingPage({
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               onClick={onGoToLogin}
-              className="text-xs font-bold text-[#1A2521] hover:text-[#153428] transition-colors cursor-pointer"
+              className="whitespace-nowrap text-xs font-bold text-[#1A2521] hover:text-[#153428] transition-colors cursor-pointer"
             >
               Masuk
             </motion.button>
@@ -92,7 +196,7 @@ export function LandingPage({
               whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(21, 52, 40, 0.3)" }}
               whileTap={{ scale: 0.96 }}
               onClick={onGoToRegister}
-              className="px-5 py-2 text-xs font-bold rounded-full bg-[#153428] text-white hover:bg-[#0c2018] shadow-sm transition-all cursor-pointer"
+              className="whitespace-nowrap px-4 sm:px-5 py-2 text-xs font-bold rounded-full bg-[#153428] text-white hover:bg-[#0c2018] shadow-sm transition-all cursor-pointer"
             >
               Daftar Akun
             </motion.button>
@@ -155,53 +259,81 @@ export function LandingPage({
                 </motion.button>
               </div>
 
-              {/* MagnifyingGlass Widget */}
-              <motion.div 
+              {/* Search Widget */}
+              <motion.form
+                role="search"
+                onSubmit={handleSearchSubmit}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 className="bg-white rounded-3xl p-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] border border-black/5 flex flex-col md:flex-row items-center gap-2 max-w-3xl mb-8 relative z-20"
               >
-                <div className="flex-1 flex items-center gap-3 px-4 py-2 hover:bg-[#F7F6F2] rounded-2xl cursor-pointer transition-colors w-full md:w-auto">
-                  <MapPin weight="duotone" className="h-5 w-5 text-[#6D7772]" />
-                  <div className="flex flex-col text-left w-full">
+                <label className="flex-1 flex items-center gap-3 px-4 py-2 hover:bg-[#F7F6F2] focus-within:bg-[#F7F6F2] rounded-2xl cursor-text transition-colors w-full md:w-auto">
+                  <MapPin weight="duotone" className="h-5 w-5 shrink-0 text-[#6D7772]" />
+                  <span className="flex flex-col text-left w-full min-w-0">
                     <span className="text-[11px] font-bold text-[#1A2521] uppercase tracking-wide">Lokasi / Properti</span>
-                    <input type="text" placeholder="Yogyakarta, Jakarta, Bali..." className="text-sm text-[#6D7772] bg-transparent outline-none truncate w-full" />
-                  </div>
-                </div>
+                    <input
+                      type="search"
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Yogyakarta, Jakarta, Bali..."
+                      className="text-sm text-[#1A2521] placeholder:text-[#6D7772] bg-transparent outline-none truncate w-full"
+                    />
+                  </span>
+                </label>
 
                 <div className="hidden md:block w-px h-8 bg-black/5" />
 
-                <div className="flex-1 flex items-center justify-between gap-3 px-4 py-2 hover:bg-[#F7F6F2] rounded-2xl cursor-pointer transition-colors w-full md:w-auto">
-                  <div className="flex items-center gap-3">
-                    <CalendarBlank weight="duotone" className="h-5 w-5 text-[#6D7772]" />
-                    <div className="flex flex-col text-left">
+                <label className="relative flex-1 flex items-center justify-between gap-3 px-4 py-2 hover:bg-[#F7F6F2] focus-within:bg-[#F7F6F2] rounded-2xl cursor-pointer transition-colors w-full md:w-auto">
+                  <span className="flex items-center gap-3 w-full">
+                    <House weight="duotone" className="h-5 w-5 shrink-0 text-[#6D7772]" />
+                    <span className="flex flex-col text-left w-full">
                       <span className="text-[11px] font-bold text-[#1A2521] uppercase tracking-wide">Tipe Hunian</span>
-                      <span className="text-sm text-[#6D7772]">Semua Tipe</span>
-                    </div>
-                  </div>
-                  <CaretDown weight="duotone" className="h-4 w-4 text-[#6D7772]" />
-                </div>
+                      <select
+                        value={type}
+                        onChange={(e) => setType(e.target.value)}
+                        className="appearance-none bg-transparent outline-none text-sm text-[#6D7772] w-full pr-6 cursor-pointer"
+                      >
+                        <option value="">Semua Tipe</option>
+                        {PROPERTY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
+                    </span>
+                  </span>
+                  <CaretDown weight="duotone" className="pointer-events-none absolute right-4 h-4 w-4 text-[#6D7772]" />
+                </label>
 
                 <div className="hidden md:block w-px h-8 bg-black/5" />
 
-                <div className="flex-1 flex items-center justify-between gap-3 px-4 py-2 hover:bg-[#F7F6F2] rounded-2xl cursor-pointer transition-colors w-full md:w-auto">
-                  <div className="flex flex-col text-left">
-                    <span className="text-[11px] font-bold text-[#1A2521] uppercase tracking-wide">Durasi Sewa</span>
-                    <span className="text-sm text-[#6D7772]">Bulanan / Harian</span>
-                  </div>
-                  <CaretDown weight="duotone" className="h-4 w-4 text-[#6D7772]" />
-                </div>
+                <label className="relative flex-1 flex items-center justify-between gap-3 px-4 py-2 hover:bg-[#F7F6F2] focus-within:bg-[#F7F6F2] rounded-2xl cursor-pointer transition-colors w-full md:w-auto">
+                  <span className="flex items-center gap-3 w-full">
+                    <CalendarBlank weight="duotone" className="h-5 w-5 shrink-0 text-[#6D7772]" />
+                    <span className="flex flex-col text-left w-full">
+                      <span className="text-[11px] font-bold text-[#1A2521] uppercase tracking-wide">Durasi Sewa</span>
+                      <select
+                        value={duration}
+                        onChange={(e) => setDuration(e.target.value as ListingFilters['duration'])}
+                        className="appearance-none bg-transparent outline-none text-sm text-[#6D7772] w-full pr-6 cursor-pointer"
+                      >
+                        <option value="">Bulanan / Harian</option>
+                        <option value="Bulanan">Bulanan</option>
+                        <option value="Harian">Harian</option>
+                      </select>
+                    </span>
+                  </span>
+                  <CaretDown weight="duotone" className="pointer-events-none absolute right-4 h-4 w-4 text-[#6D7772]" />
+                </label>
 
-                <motion.button 
+                <motion.button
+                  type="submit"
+                  aria-label="Cari hunian"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={onStartDemo}
-                  className="bg-[#153428] text-white p-4 rounded-2xl hover:bg-[#0c2018] transition-colors w-full md:w-auto flex justify-center cursor-pointer shadow-md"
+                  className="bg-[#153428] text-white p-4 rounded-2xl hover:bg-[#0c2018] transition-colors w-full md:w-auto flex justify-center items-center gap-2 cursor-pointer shadow-md"
                 >
                   <MagnifyingGlass weight="duotone" className="h-5 w-5" />
+                  <span className="md:hidden text-sm font-bold">Cari Hunian</span>
                 </motion.button>
-              </motion.div>
+              </motion.form>
 
               {/* Tags */}
               <div className="flex flex-wrap items-center gap-3">
@@ -244,22 +376,22 @@ export function LandingPage({
                 animate={{ y: [0, -10, 0] }}
                 transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
                 className="absolute top-12 -left-8 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl shadow-xl flex items-center gap-4 pr-6 z-20 border border-[rgba(23,59,48,0.08)] cursor-pointer"
-                onClick={() => onViewPropertyWebsite?.(properties[0]?.id || 'prop-1')}
+                onClick={() => featured ? onViewPropertyWebsite?.(featured.id) : scrollToResults()}
               >
                 <img 
-                  src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=200" 
-                  alt="Room" 
+                  src={featured?.coverImage || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=200"} 
+                  alt={featured?.name || 'Kamar'} 
                   className="w-16 h-14 rounded-xl object-cover" 
                 />
                 <div>
-                  <h4 className="text-sm font-bold text-[#1A2521]">{properties[0]?.name || 'Green House Kemang'}</h4>
+                  <h4 className="text-sm font-bold text-[#1A2521]">{featured?.name || 'Green House Kemang'}</h4>
                   <p className="text-[10px] text-[#6D7772] flex items-center gap-1 mb-1">
-                    <MapPin weight="duotone" className="h-3 w-3 text-emerald-700" /> {properties[0]?.city || 'Jakarta Selatan'}
+                    <MapPin weight="duotone" className="h-3 w-3 text-emerald-700" /> {featured ? (featured.city || featured.address || featured.type) : 'Jakarta Selatan'}
                   </p>
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-sm font-bold text-[#153428]">
-                      Rp {(properties[0]?.startPriceMonth || 4550000).toLocaleString('id-ID')} 
-                      <span className="text-[10px] font-normal text-[#6D7772]">/bln</span>
+                      {formatIDR(featured?.startPriceMonth || featured?.startPriceDay || 4550000)}{' '}
+                      <span className="text-[10px] font-normal text-[#6D7772]">{featured && !featured.startPriceMonth && featured.startPriceDay ? '/mlm' : '/bln'}</span>
                     </span>
                     <span className="text-[11px] font-bold flex items-center gap-0.5">
                       <Star weight="duotone" className="h-3 w-3 fill-amber-400 text-amber-400" /> 5.0
@@ -320,7 +452,7 @@ export function LandingPage({
         </section>
 
         {/* 3. FEATURED HOMES SECTION WITH 3D CARDS & SCROLL REVEAL */}
-        <section id="featured" className="bg-white rounded-[40px] max-w-[1400px] mx-auto p-10 lg:p-16 mb-24 shadow-sm border border-[rgba(23,59,48,0.06)]">
+        <section id="featured" className="scroll-mt-24 bg-white rounded-[32px] sm:rounded-[40px] max-w-[1400px] mx-4 sm:mx-auto p-5 sm:p-10 lg:p-16 mb-24 shadow-sm border border-[rgba(23,59,48,0.06)]">
           <motion.div 
             initial={{ opacity: 0, y: 25 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -328,14 +460,37 @@ export function LandingPage({
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12"
           >
-            <div>
-              <p className="text-[10px] tracking-[0.2em] font-bold text-[#6D7772] uppercase mb-3">Tempat & Penginapan Pilihan</p>
-              <div className="flex flex-col lg:flex-row lg:items-baseline gap-4 lg:gap-8">
-                <h2 className="text-4xl lg:text-5xl font-medium text-[#1A2521] font-editorial">Handpicked spaces for modern living.</h2>
-                <p className="text-sm text-[#6D7772]">Tempat penginapan terbaik. Website pemesanan langsung tanpa komisi agen.</p>
-              </div>
+            <div aria-live="polite">
+              <p className="text-[10px] tracking-[0.2em] font-bold text-[#6D7772] uppercase mb-3">
+                {applied ? 'Hasil Pencarian' : 'Tempat & Penginapan Pilihan'}
+              </p>
+              {applied ? (
+                <div className="flex flex-col gap-3">
+                  <h2 className="text-3xl lg:text-4xl font-medium text-[#1A2521] font-editorial">
+                    {loading ? 'Mencari hunian...' : `${listings.length} hunian ditemukan`}
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                    {applied.q?.trim() && <span className="px-3 py-1 rounded-full bg-[#F7F6F2] border border-black/5 text-[#1A2521]">Lokasi: {applied.q.trim()}</span>}
+                    {applied.type && <span className="px-3 py-1 rounded-full bg-[#F7F6F2] border border-black/5 text-[#1A2521]">Tipe: {PROPERTY_TYPES.find(t => t.value === applied.type)?.label || applied.type}</span>}
+                    {applied.duration && <span className="px-3 py-1 rounded-full bg-[#F7F6F2] border border-black/5 text-[#1A2521]">Sewa {applied.duration}</span>}
+                    <button type="button" onClick={resetSearch} className="px-3 py-1 rounded-full text-[#153428] underline underline-offset-2 cursor-pointer">
+                      Reset pencarian
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col lg:flex-row lg:items-baseline gap-4 lg:gap-8">
+                  <h2 className="text-4xl lg:text-5xl font-medium text-[#1A2521] font-editorial">Handpicked spaces for modern living.</h2>
+                  <p className="text-sm text-[#6D7772]">Tempat penginapan terbaik. Website pemesanan langsung tanpa komisi agen.</p>
+                </div>
+              )}
+              {isDemoCatalog && !loading && (
+                <p className="mt-3 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-full inline-block px-3 py-1">
+                  Contoh properti demo — belum ada website pengelola yang dipublikasikan.
+                </p>
+              )}
             </div>
-            <motion.button 
+            <motion.button
               whileHover={{ x: 4 }}
               onClick={onStartDemo}
               className="text-sm font-semibold text-[#1A2521] hover:text-[#153428] flex items-center gap-2 whitespace-nowrap group cursor-pointer"
@@ -344,8 +499,21 @@ export function LandingPage({
             </motion.button>
           </motion.div>
 
+          {!loading && listings.length === 0 && (
+            <div className="mb-8 rounded-3xl border border-dashed border-[#153428]/25 bg-[#FBF9F5] p-8 text-center">
+              <h3 className="font-editorial text-2xl text-[#1A2521] mb-2">Belum ada hunian yang cocok.</h3>
+              <p className="text-sm text-[#6D7772] mb-4">Coba kota lain, pilih semua tipe, atau ubah durasi sewa.</p>
+              <button type="button" onClick={resetSearch} className="px-5 py-2.5 rounded-full bg-[#153428] text-white text-xs font-bold cursor-pointer hover:bg-[#0c2018]">
+                Tampilkan semua hunian
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {properties.map((prop, idx) => (
+            {loading && listings.length === 0 && [0, 1, 2].map(i => (
+              <div key={i} className="h-[420px] rounded-3xl bg-[#FBF9F5] border border-zinc-200/80 animate-pulse" />
+            ))}
+            {listings.map((prop, idx) => (
               <motion.div
                 key={prop.id}
                 initial={{ opacity: 0, y: 35 }}
@@ -376,20 +544,33 @@ export function LandingPage({
                       <div className="flex items-start justify-between mb-1 px-1">
                         <h3 className="font-bold text-[#1A2521] text-base group-hover:text-[#153428] transition-colors">{prop.name}</h3>
                         <span className="text-xs font-bold flex items-center gap-1 text-[#153428]">
-                          <Star weight="duotone" className="h-3 w-3 fill-amber-400 text-amber-400" /> 4.9
+                          {prop.availableRooms} kamar kosong
                         </span>
                       </div>
                       <p className="text-[11px] text-[#6D7772] flex items-center gap-1 mb-3 px-1">
-                        <MapPin weight="duotone" className="h-3 w-3 shrink-0 text-emerald-700" /> {prop.city} — {prop.address}
+                        <MapPin weight="duotone" className="h-3 w-3 shrink-0 text-emerald-700" /> {[prop.city, prop.address].filter(Boolean).join(' — ') || 'Lokasi belum diisi'}
                       </p>
                     </div>
 
                     <div className="px-1 pt-3 border-t border-zinc-200/60">
                       <div className="mb-3">
-                        <span className="text-base font-extrabold text-[#153428]">
-                          Rp {(prop.startPriceMonth || 1750000).toLocaleString('id-ID')}
-                        </span>
-                        <span className="text-xs text-[#6D7772]"> / bulan</span>
+                        {(() => {
+                          // Show the price for the rental period being searched for, if any.
+                          const daily = applied?.duration === 'Harian' || (!prop.startPriceMonth && !!prop.startPriceDay);
+                          const price = daily ? prop.startPriceDay : prop.startPriceMonth;
+                          return price ? (
+                            <>
+                              <span className="text-[10px] text-[#6D7772]">Mulai </span>
+                              <span className="text-base font-extrabold text-[#153428]">{formatIDR(price)}</span>
+                              <span className="text-xs text-[#6D7772]"> / {daily ? 'malam' : 'bulan'}</span>
+                            </>
+                          ) : (
+                            <span className="text-xs font-semibold text-[#6D7772]">Hubungi pengelola untuk harga</span>
+                          );
+                        })()}
+                        {prop.rentalTypes.length > 0 && (
+                          <span className="block mt-0.5 text-[10px] font-bold text-emerald-800">Sewa {prop.rentalTypes.join(' · ')}</span>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {(prop.facilities && prop.facilities.length > 0 ? prop.facilities.slice(0, 3) : ['WiFi', 'AC', 'Furnished']).map((fac, i) => (
@@ -420,7 +601,7 @@ export function LandingPage({
               initial={{ opacity: 0, y: 35 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.7, delay: properties.length * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.7, delay: listings.length * 0.1, ease: [0.16, 1, 0.3, 1] }}
             >
               <TiltCard3D maxTilt={6} scale={1.02} className="h-full">
                 <div className="relative rounded-3xl overflow-hidden bg-[#153428] text-white p-6 h-full flex flex-col justify-between group shadow-xl shadow-[#153428]/25 border border-white/10">
@@ -436,7 +617,7 @@ export function LandingPage({
                     </p>
                     <div className="grid grid-cols-2 gap-2 border-t border-white/20 pt-4 mb-4">
                       <div>
-                        <div className="text-lg font-bold">{properties.length}+</div>
+                        <div className="text-lg font-bold">{catalogSize}</div>
                         <div className="text-[9px] text-white/70 uppercase tracking-wider">Tempat Aktif</div>
                       </div>
                       <div>
@@ -506,7 +687,7 @@ export function LandingPage({
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ duration: 0.6, delay: idx * 0.1 }}
                   whileHover={{ y: -4 }}
-                  className="flex flex-col items-center text-center group cursor-pointer"
+                  className="flex flex-col items-center text-center group"
                 >
                   <div className="w-13 h-13 rounded-2xl bg-white border border-black/5 shadow-sm group-hover:shadow-md group-hover:border-[#153428]/20 flex items-center justify-center mb-4 text-[#153428] transition-all">
                     <item.icon className="h-5 w-5" />
@@ -530,11 +711,18 @@ export function LandingPage({
                 <h3 className="text-lg font-bold text-[#1A2521] mb-1">Live in inspiring places.</h3>
                 <p className="text-xs text-[#6D7772] mb-6">From vibrant cities to coastal escapes.</p>
                 
-                <ul className="space-y-3 text-sm font-semibold text-[#4A544E]">
-                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#153428]" /> Yogyakarta</li>
-                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full border border-[#153428]" /> Jakarta Selatan</li>
-                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full border border-[#153428]" /> Bali (Canggu & Ubud)</li>
-                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full border border-[#153428]" /> Bandung</li>
+                <ul className="space-y-1 text-sm font-semibold text-[#4A544E]">
+                  {DESTINATIONS.map((d, i) => (
+                    <li key={d.query}>
+                      <button
+                        type="button"
+                        onClick={() => runSearch({ q: d.query })}
+                        className="flex items-center gap-2 py-1 hover:text-[#153428] hover:underline underline-offset-2 cursor-pointer"
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${i === 0 ? 'bg-[#153428]' : 'border border-[#153428]'}`} /> {d.label}
+                      </button>
+                    </li>
+                  ))}
                   <li className="flex items-center gap-2 text-[#6D7772] font-normal text-xs mt-4">— Dan kota-kota lainnya</li>
                 </ul>
               </div>
@@ -550,7 +738,12 @@ export function LandingPage({
               <motion.div 
                 animate={{ y: [0, -6, 0] }}
                 transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-                className="absolute bottom-6 right-6 bg-white p-2.5 rounded-2xl shadow-xl w-48 z-10 border border-black/5"
+                className="absolute bottom-6 right-6 bg-white p-2.5 rounded-2xl shadow-xl w-48 z-10 border border-black/5 cursor-pointer"
+                role="button"
+                tabIndex={0}
+                aria-label="Cari hunian di Yogyakarta"
+                onClick={() => runSearch({ q: 'Yogyakarta' })}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); runSearch({ q: 'Yogyakarta' }); } }}
               >
                 <img src="https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&q=80&w=400" alt="Yogyakarta" className="w-full h-20 object-cover rounded-xl mb-2" />
                 <h4 className="font-bold text-xs text-[#1A2521]">Yogyakarta</h4>

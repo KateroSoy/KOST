@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 use App\Models\WebsiteConfig;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WebsiteConfigController extends Controller {
     public function index(Request $request) {
@@ -42,11 +43,25 @@ class WebsiteConfigController extends Controller {
             'sections' => 'sometimes|array',
             'isPublished' => 'sometimes|boolean',
         ]);
+        $userId = $request->user()->id;
+        // Rows other than the one being upserted — subdomain/custom_domain are globally unique.
+        $others = fn () => WebsiteConfig::where(fn ($q) => $q->where('user_id', '!=', $userId)->orWhere('property_id', '!=', $data['propertyId']));
+
+        if (!empty($data['customDomain']) && $others()->where('custom_domain', $data['customDomain'])->exists()) {
+            throw ValidationException::withMessages(['customDomain' => 'Domain ini sudah dipakai properti lain.']);
+        }
+
+        $base = $data['subdomain'];
+        $subdomain = $base;
+        for ($n = 1; $others()->where('subdomain', $subdomain)->exists(); $n++) {
+            $subdomain = $base . '-' . $n;
+        }
+
         WebsiteConfig::updateOrCreate(
-            ['user_id' => $request->user()->id, 'property_id' => $data['propertyId']],
+            ['user_id' => $userId, 'property_id' => $data['propertyId']],
             [
                 'template_id' => $data['templateId'],
-                'subdomain' => $data['subdomain'],
+                'subdomain' => $subdomain,
                 'custom_domain' => $data['customDomain'] ?? null,
                 'headline' => $data['headline'],
                 'subheadline' => $data['subheadline'],
@@ -60,7 +75,7 @@ class WebsiteConfigController extends Controller {
                 'is_published' => $data['isPublished'] ?? true,
             ]
         );
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'subdomain' => $subdomain]);
     }
     public function destroy(Request $request, $propertyId) {
         WebsiteConfig::where('user_id', $request->user()->id)->where('property_id', $propertyId)->delete();

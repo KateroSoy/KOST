@@ -152,7 +152,8 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
         </div>
 
         {/* Metric 3: Add Button Shortcut */}
-        <div 
+        <button
+          type="button"
           onClick={() => setShowAddForm(true)}
           className="bg-[#173B30] p-6 rounded-[28px] shadow-sm flex flex-col justify-between items-center text-white cursor-pointer hover:bg-[#0f2720] transition-colors"
         >
@@ -160,7 +161,7 @@ export function ExpensesView({ expenses, onAddExpense, onDeleteExpense, selected
             
           </div>
           <span className="text-sm font-bold">Catat Pengeluaran</span>
-        </div>
+        </button>
       </section>
 
       {/* 2. TRANSACTIONS & BREAKDOWN */}

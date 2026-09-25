@@ -13,6 +13,71 @@ use Illuminate\Support\Str;
 
 class PublicController extends Controller
 {
+    /**
+     * Public catalog of properties whose website is published — NO AUTH required.
+     * GET /api/public/properties?q=&type=&duration=Bulanan|Harian
+     */
+    public function index(Request $request)
+    {
+        $q = mb_strtolower(trim((string) $request->query('q', '')));
+        $type = trim((string) $request->query('type', ''));
+        $duration = $request->query('duration');
+        if (! in_array($duration, ['Bulanan', 'Harian'], true)) $duration = null;
+
+        $published = WebsiteConfig::where('is_published', true)->get(['user_id', 'property_id']);
+        if ($published->isEmpty()) return response()->json([]);
+
+        $properties = Property::whereIn('id', $published->pluck('property_id'))
+            ->when($type !== '', fn ($query) => $query->where('type', $type))
+            ->get()
+            // The config must belong to the property's owner, not just share its id.
+            ->filter(fn ($p) => $published->contains(fn ($c) => $c->property_id === $p->id && (int) $c->user_id === (int) $p->user_id))
+            ->filter(fn ($p) => $q === '' || collect([$p->name, $p->city, $p->address])
+                ->contains(fn ($field) => str_contains(mb_strtolower((string) $field), $q)));
+        if ($properties->isEmpty()) return response()->json([]);
+
+        $ownerIds = $properties->pluck('user_id')->unique();
+        $propertyCounts = Property::whereIn('user_id', $ownerIds)->selectRaw('user_id, count(*) as n')
+            ->groupBy('user_id')->pluck('n', 'user_id');
+        $rooms = Room::whereIn('user_id', $ownerIds)->where('status', 'Kosong')->get();
+
+        $rows = $properties->map(function ($p) use ($rooms, $propertyCounts) {
+            // Mirrors property(): rooms without a propertyId belong to single-property owners.
+            $own = $rooms->filter(fn ($r) => (int) $r->user_id === (int) $p->user_id
+                && ($r->propertyId === $p->id || ($r->propertyId === null && (int) ($propertyCounts[$p->user_id] ?? 0) === 1)));
+            $supports = function ($room, string $kind) {
+                $allowed = $room->rentalTypesAllowed ?? [];
+                if (! empty($allowed)) return in_array($kind, $allowed, true);
+                return $kind === 'Harian' ? $room->pricePerDay > 0 : ($room->pricePerMonth ?: $room->price) > 0;
+            };
+            $monthly = $own->filter(fn ($r) => $supports($r, 'Bulanan'));
+            $daily = $own->filter(fn ($r) => $supports($r, 'Harian'));
+
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'type' => $p->type,
+                'city' => $p->city,
+                'address' => $p->address,
+                'coverImage' => $p->coverImage ?: ($own->first()?->images[0] ?? null),
+                'facilities' => array_slice($p->facilities ?? [], 0, 6),
+                'availableRooms' => $own->count(),
+                'startPriceMonth' => $monthly->map(fn ($r) => $r->pricePerMonth ?: $r->price)->min() ?? $p->startPriceMonth,
+                'startPriceDay' => $daily->min('pricePerDay') ?? $p->startPriceDay,
+                'rentalTypes' => array_values(array_filter([
+                    $monthly->isNotEmpty() ? 'Bulanan' : null,
+                    $daily->isNotEmpty() ? 'Harian' : null,
+                ])),
+            ];
+        })
+            ->filter(fn ($row) => $duration === null || in_array($duration, $row['rentalTypes'], true))
+            ->sortByDesc('availableRooms')
+            ->take(60)
+            ->values();
+
+        return response()->json($rows);
+    }
+
     public function property(string $id)
     {
         $property = Property::find($id);

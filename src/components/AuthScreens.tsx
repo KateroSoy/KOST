@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Buildings, ArrowLeft, ArrowRight, User, Key, Phone, MapPin, Check, CheckCircle, Globe, Eye, ShieldCheck } from '@phosphor-icons/react';
-import { KostSettings, Room, Tenant, BankAccount } from '../types';
+import { KostSettings, Room, Tenant, BankAccount, PropertyType } from '../types';
 import { authLogin, authRegister, setToken } from '../api';
 import { ElegantSelect } from './ElegantSelect';
 
@@ -8,7 +8,7 @@ interface AuthScreensProps {
   viewMode: 'login' | 'register' | 'onboarding';
   onGoBackLanding: () => void;
   onSetViewMode: (mode: 'login' | 'register' | 'onboarding' | 'dashboard') => void;
-  onInitializeKost: (kostConfig: Partial<KostSettings>, roomCount: number, basePrice: number, templateId?: string, subdomain?: string) => Promise<void>;
+  onInitializeKost: (kostConfig: Partial<KostSettings>, roomCount: number, basePrice: number, templateId?: string, subdomain?: string, propertyMeta?: { city: string; type: PropertyType }) => Promise<void>;
 }
 
 export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitializeKost }: AuthScreensProps) {
@@ -109,7 +109,8 @@ export function AuthScreens({ viewMode, onGoBackLanding, onSetViewMode, onInitia
       obRoomCount,
       obBasePrice,
       obTemplate,
-      obSubdomain
+      obSubdomain,
+      { city: obCity.trim(), type: obPropType as PropertyType }
       );
       localStorage.setItem('kostos_logged_in', 'true');
       onSetViewMode('dashboard');
