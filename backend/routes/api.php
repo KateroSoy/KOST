@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillController;
+use App\Http\Controllers\BootstrapController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\PropertyController;
@@ -30,6 +31,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me',               [AuthController::class, 'me']);
     Route::post('/auth/logout',          [AuthController::class, 'logout']);
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+
+    // Whole dashboard payload in one request (one DB connection) — see BootstrapController.
+    Route::get('/bootstrap', [BootstrapController::class, 'index']);
 
     // Super Admin Routes (SaaS Platform Management)
     Route::get('/admin/metrics',           [SuperAdminController::class, 'metrics']);

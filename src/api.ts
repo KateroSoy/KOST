@@ -472,33 +472,6 @@ const getWithRetry = async (path: string, attempts = 3): Promise<Response> => {
   }
 };
 
-// GET a list endpoint; throws unless the response is a successful JSON array.
-const getList = async (path: string): Promise<any[]> => {
-  const res = await getWithRetry(path);
-  if (!res.ok) throw new Error(`${path} gagal dimuat (${res.status})`);
-  const data = await res.json();
-  if (!Array.isArray(data)) throw new Error(`${path} mengembalikan data tidak valid`);
-  return data;
-};
-
-// Returns null when the fetch failed (so callers can fall back to cache),
-// or the (possibly empty) array on a genuine successful response.
-const fetchProResource = async (path: string): Promise<any[] | null> => {
-  try {
-    const res = await getWithRetry(path);
-    if (res.status === 403) {
-      const data = await parseJsonResponse(res).catch(() => null);
-      if (data?.code === 'PLAN_LOCKED') planLockedHandler?.();
-      return null;
-    }
-    if (!res.ok) return null;
-    const data = await res.json();
-    return Array.isArray(data) ? data : null;
-  } catch {
-    return null;
-  }
-};
-
 export const fetchAllData = async () => {
   if (!getToken()) {
     // No token → offline / not logged in
@@ -507,30 +480,32 @@ export const fetchAllData = async () => {
   }
 
   try {
-    const healthRes = await getWithRetry('/api/settings');
-    if (healthRes.status === 401) {
+    // One request for the whole dashboard: shared hosting allows only ~10 concurrent
+    // MySQL connections per account, and 11 parallel GETs alone exceeded it (500s).
+    const res = await getWithRetry('/api/bootstrap');
+    if (res.status === 401) {
       // Token expired
       clearToken();
       throw new Error('Unauthorized');
     }
-    if (!healthRes.ok) throw new Error('API not ok');
+    if (!res.ok) throw new Error(`/api/bootstrap gagal dimuat (${res.status})`);
+    const boot = await res.json();
 
     isOfflineMode = false;
 
-    // Fetch all endpoints in parallel
-    const [settings, rooms, tenants, bills, expenses, complaints, propertiesResult, bookingsResult, operationsResult, staffResult, websiteConfigsResult] = await Promise.all([
-      healthRes.json(),
-      getList('/api/rooms'),
-      getList('/api/tenants'),
-      getList('/api/bills'),
-      getList('/api/expenses'),
-      getList('/api/complaints'),
-      getList('/api/properties'),
-      fetchProResource('/api/bookings'),
-      fetchProResource('/api/operations'),
-      fetchProResource('/api/staff'),
-      fetchProResource('/api/website-configs'),
-    ]);
+    const listOf = (key: string): any[] => {
+      if (!Array.isArray(boot[key])) throw new Error(`/api/bootstrap: ${key} tidak valid`);
+      return boot[key];
+    };
+    // Pro resources are null when the plan is locked, which falls back to the cache below.
+    const proList = (key: string): any[] | null => (Array.isArray(boot[key]) ? boot[key] : null);
+    if (boot.planLocked) planLockedHandler?.();
+
+    const settings = boot.settings;
+    const [rooms, tenants, bills, expenses, complaints, propertiesResult] =
+      ['rooms', 'tenants', 'bills', 'expenses', 'complaints', 'properties'].map(listOf);
+    const [bookingsResult, operationsResult, staffResult, websiteConfigsResult] =
+      ['bookings', 'operations', 'staff', 'websiteConfigs'].map(proList);
 
     // Persist to localStorage for offline fallback
     localStorage.setItem('kostos_settings', JSON.stringify(settings));
