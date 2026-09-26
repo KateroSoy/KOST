@@ -12,6 +12,7 @@ interface RoomsViewProps {
   onSelectRoomId: (id: string | null) => void;
   onAddRoom: (newRoom: Room) => void;
   onUpdateRoomStatus: (id: string, status: RoomStatus, tenantId?: string) => void;
+  onEditRoom: (id: string, changes: Partial<Room>) => void;
   onDeleteRoom: (id: string) => void;
   onNavigateToTab: (tab: string, arg?: string) => void;
   onUpdateHousekeepingStatus?: (id: string, hkStatus: HousekeepingStatus) => void;
@@ -19,11 +20,13 @@ interface RoomsViewProps {
 
 export function RoomsView({ 
   rooms, tenants, bills, selectedRoomId, onSelectRoomId, 
-  onAddRoom, onUpdateRoomStatus, onDeleteRoom, onNavigateToTab, onUpdateHousekeepingStatus 
+  onAddRoom, onUpdateRoomStatus, onEditRoom, onDeleteRoom, onNavigateToTab, onUpdateHousekeepingStatus 
 }: RoomsViewProps) {
   
   // View states
   const [showAddForm, setShowAddForm] = useState(false);
+  // Set when the add form is reused to edit an existing room.
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Semua');
   const [floorFilter, setFloorFilter] = useState<string>('Semua');
@@ -36,6 +39,7 @@ export function RoomsView({
   const [roomType, setRoomType] = useState<RoomType>('Studio');
   const [roomFloor, setRoomFloor] = useState(1);
   const [pricePerMonth, setPricePerMonth] = useState(3500000);
+  const [pricePerDay, setPricePerDay] = useState(0);
   const [roomSize, setRoomSize] = useState('4x4 m');
   const [roomNotes, setRoomNotes] = useState('');
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>(['AC', 'WiFi', 'Private Bathroom', 'Queen Bed']);
@@ -54,20 +58,77 @@ export function RoomsView({
     }
   };
 
+  const openAddForm = () => {
+    setEditingRoomId(null);
+    setRoomNo('');
+    setRoomType('Studio');
+    setRoomFloor(1);
+    setPricePerMonth(3500000);
+    setPricePerDay(0);
+    setRoomSize('4x4 m');
+    setRoomNotes('');
+    setSelectedFacilities(['AC', 'WiFi', 'Private Bathroom', 'Queen Bed']);
+    setFormError('');
+    setShowAddForm(true);
+  };
+
+  const openEditForm = (room: Room) => {
+    setEditingRoomId(room.id);
+    setRoomNo(room.number);
+    setRoomType(room.type);
+    setRoomFloor(room.floor);
+    setPricePerMonth(room.pricePerMonth || room.price);
+    setPricePerDay(room.pricePerDay || 0);
+    setRoomSize(room.size || '');
+    setRoomNotes(room.notes || '');
+    setSelectedFacilities(room.facilities || []);
+    setFormError('');
+    onSelectRoomId(null);
+    setShowAddForm(true);
+  };
+
+  const closeForm = () => {
+    setShowAddForm(false);
+    setEditingRoomId(null);
+  };
+
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!roomNo) {
+    const number = roomNo.trim();
+    if (!number) {
       setFormError('Nomor atau nama kamar wajib diisi!');
+      return;
+    }
+    if (rooms.some(r => r.id !== editingRoomId && r.number.toLowerCase() === number.toLowerCase())) {
+      setFormError(`Kamar ${number} sudah ada. Gunakan nomor lain.`);
+      return;
+    }
+
+    if (editingRoomId) {
+      onEditRoom(editingRoomId, {
+        number,
+        type: roomType,
+        price: pricePerMonth,
+        pricePerMonth,
+        pricePerDay,
+        floor: Number(roomFloor),
+        size: roomSize,
+        facilities: selectedFacilities,
+        notes: roomNotes,
+      });
+      setFormError('');
+      closeForm();
       return;
     }
 
     const newRoom: Room = {
       id: generateId('room'),
-      number: roomNo,
+      number,
       status: 'Kosong',
       type: roomType,
       price: pricePerMonth,
       pricePerMonth: pricePerMonth,
+      ...(pricePerDay > 0 ? { pricePerDay } : {}),
       housekeepingStatus: 'Bersih',
       floor: Number(roomFloor),
       size: roomSize,
@@ -81,7 +142,7 @@ export function RoomsView({
     // Reset
     setRoomNo('');
     setFormError('');
-    setShowAddForm(false);
+    closeForm();
   };
 
   const formatIDR = (num: number) => {
@@ -117,7 +178,7 @@ export function RoomsView({
         </div>
 
         <button
-          onClick={() => setShowAddForm(true)}
+          onClick={openAddForm}
           className="px-5 py-3 rounded-full bg-[#173B30] text-[#F5F1E8] hover:bg-[#0f2720] text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#173b30]/20"
         >
            Kamar Baru
@@ -217,12 +278,22 @@ export function RoomsView({
                          {room.type} • {room.size}
                        </span>
                     </div>
-                    <button
-                      onClick={() => onSelectRoomId(room.id)}
-                      className="h-10 w-10 rounded-full bg-[#F5F1E8] flex items-center justify-center text-[#173B30] shadow-sm hover:bg-[#E5DCC5] transition-colors"
-                    >
-                      <Eye weight="duotone" className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEditForm(room)}
+                        aria-label={`Edit Kamar ${room.number}`}
+                        className="h-10 w-10 rounded-full bg-[#F5F1E8] flex items-center justify-center text-[#173B30] shadow-sm hover:bg-[#E5DCC5] transition-colors"
+                      >
+                        <PencilSimple weight="duotone" className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => onSelectRoomId(room.id)}
+                        aria-label={`Detail Kamar ${room.number}`}
+                        className="h-10 w-10 rounded-full bg-[#F5F1E8] flex items-center justify-center text-[#173B30] shadow-sm hover:bg-[#E5DCC5] transition-colors"
+                      >
+                        <Eye weight="duotone" className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -337,6 +408,12 @@ export function RoomsView({
                 Tutup
               </button>
               <button
+                onClick={() => openEditForm(activeDetailRoom)}
+                className="w-full py-3.5 rounded-2xl bg-white text-xs text-[#173B30] font-bold shadow-sm flex items-center justify-center gap-2"
+              >
+                <PencilSimple weight="duotone" className="h-4 w-4" /> Edit Kamar
+              </button>
+              <button
                 onClick={() => {
                   onDeleteRoom(activeDetailRoom.id);
                   onSelectRoomId(null);
@@ -355,8 +432,8 @@ export function RoomsView({
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#FBF9F5] border border-[rgba(23,59,48,0.15)] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-[rgba(23,59,48,0.10)] pb-3">
-              <h3 className="text-lg font-bold text-[#171A18] font-editorial">Tambah Kamar Baru</h3>
-              <button onClick={() => setShowAddForm(false)} className="p-1 text-[#6E746F]">
+              <h3 className="text-lg font-bold text-[#171A18] font-editorial">{editingRoomId ? `Edit Kamar ${rooms.find(r => r.id === editingRoomId)?.number ?? ''}` : 'Tambah Kamar Baru'}</h3>
+              <button onClick={closeForm} className="p-1 text-[#6E746F]">
                 <X weight="duotone" className="h-4 w-4" />
               </button>
             </div>
@@ -384,13 +461,8 @@ export function RoomsView({
                   <ElegantSelect
                     value={roomType}
                     onChange={(val) => setRoomType(val as RoomType)}
-                    options={[
-                      { value: 'Studio', label: 'Studio' },
-                      { value: 'Studio Plus', label: 'Studio Plus' },
-                      { value: 'Suite', label: 'Suite' },
-                      { value: 'Standard', label: 'Standard' },
-                      { value: 'Deluxe', label: 'Deluxe' }
-                    ]}
+                    options={[...new Set<string>(['Studio', 'Studio Plus', 'Suite', 'Standard', 'Deluxe', roomType])]
+                      .map(t => ({ value: t, label: t }))}
                   />
                 </div>
 
@@ -430,6 +502,31 @@ export function RoomsView({
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#171A18] mb-1">Tarif Harian (Rp)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={pricePerDay}
+                    onChange={(e) => setPricePerDay(Number(e.target.value))}
+                    placeholder="0 = tidak disewakan harian"
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3.5 py-2 text-xs text-[#171A18]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#171A18] mb-1">Catatan</label>
+                  <input
+                    type="text"
+                    value={roomNotes}
+                    onChange={(e) => setRoomNotes(e.target.value)}
+                    placeholder="Opsional"
+                    className="w-full bg-white border border-[rgba(23,59,48,0.15)] rounded-xl px-3.5 py-2 text-xs text-[#171A18]"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block font-bold text-[#171A18] mb-1.5">Fasilitas Kamar</label>
                 <div className="flex flex-wrap gap-1.5">
@@ -453,7 +550,7 @@ export function RoomsView({
               <div className="pt-3 border-t border-[rgba(23,59,48,0.10)] flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddForm(false)}
+                  onClick={closeForm}
                   className="px-4 py-2 rounded-xl border border-[rgba(23,59,48,0.20)] text-xs font-bold text-[#173B30]"
                 >
                   Batal
@@ -462,7 +559,7 @@ export function RoomsView({
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-[#173B30] text-[#F5F1E8] font-bold text-xs hover:bg-[#0f2720]"
                 >
-                  Simpan Kamar
+                  {editingRoomId ? 'Simpan Perubahan' : 'Simpan Kamar'}
                 </button>
               </div>
             </form>

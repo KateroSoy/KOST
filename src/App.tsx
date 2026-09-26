@@ -490,6 +490,16 @@ export default function App() {
     syncToBackend(`rooms/${id}/housekeeping`, 'PATCH', { housekeepingStatus });
   };
 
+  const handleEditRoom = (id: string, changes: Partial<Room>) => {
+    const oldNumber = rooms.find(r => r.id === id)?.number;
+    setRooms(prev => prev.map(r => r.id === id ? { ...r, ...changes } : r));
+    // Tenants reference their room by number; the backend cascades the same rename.
+    if (changes.number && oldNumber && changes.number !== oldNumber) {
+      setTenants(prev => prev.map(t => t.roomAssigned === oldNumber ? { ...t, roomAssigned: changes.number! } : t));
+    }
+    syncToBackend(`rooms/${id}`, 'PUT', changes);
+  };
+
   const handleDeleteRoom = (id: string) => {
     setRooms(prev => prev.filter(r => r.id !== id));
     syncToBackend(`rooms/${id}`, 'DELETE');
@@ -805,6 +815,7 @@ export default function App() {
             onAddRoom={handleAddRoom}
             onUpdateRoomStatus={handleUpdateRoomStatus}
             onUpdateHousekeepingStatus={handleUpdateHousekeepingStatus}
+            onEditRoom={handleEditRoom}
             onDeleteRoom={handleDeleteRoom}
             onNavigateToTab={(tab, arg) => {
               if (tab === 'tenants' && arg) setSelectedTenantId(arg);

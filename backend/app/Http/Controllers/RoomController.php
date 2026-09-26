@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Room;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RoomController extends Controller
 {
@@ -37,8 +39,19 @@ class RoomController extends Controller
             return response()->json(['error' => 'Kamar tidak ditemukan'], 404);
         }
 
-        $room->fill($request->all());
-        $room->save();
+        // id and user_id are fillable for upserts, but an edit must never move the room.
+        $room->fill($request->except(['id', 'user_id']));
+        $oldNumber = $room->getOriginal('number');
+
+        DB::transaction(function () use ($room, $oldNumber, $request) {
+            $room->save();
+            // Tenants reference their room by number, so carry a rename over to them.
+            if ($room->wasChanged('number')) {
+                Tenant::where('user_id', $request->user()->id)
+                    ->where('roomAssigned', $oldNumber)
+                    ->update(['roomAssigned' => $room->number]);
+            }
+        });
 
         return response()->json($room);
     }
